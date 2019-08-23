@@ -13,7 +13,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
-module ServantToElm where
+module Servant.Elm.Bidirectional where
 
 import Protolude hiding (Type, moduleName)
 
@@ -23,9 +23,8 @@ import qualified Data.Aeson as Aeson
 import qualified Language.Elm.Pretty as Pretty
 import Servant.API ((:<|>), (:>))
 import qualified Servant.API.Modifiers as Servant
-import qualified Servant.Foreign as Servant
+import qualified Servant.Foreign.Bidirectional as Servant
 
-import HaskellToElm
 import Language.Elm.Definition (Definition)
 import qualified Language.Elm.Definition as Definition
 import Language.Elm.Expression (Expression)
@@ -34,6 +33,7 @@ import qualified Language.Elm.Name as Name
 import qualified Language.Elm.Pattern as Pattern
 import Language.Elm.Type (Type)
 import qualified Language.Elm.Type as Type
+import Language.Haskell.To.Elm
 
 data Elm
 
