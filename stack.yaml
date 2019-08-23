@@ -1,0 +1,7 @@
+resolver: lts-14.0
+packages:
+- .
+extra-deps:
+- ../elm-syntax
+- ../haskell-to-elm
+- ../servant-foreign-bidirectional

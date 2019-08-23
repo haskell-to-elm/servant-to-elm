@@ -1,0 +1,61 @@
+name:                servant-elm-bidirectional
+version:             0.1.0.0
+github:              "folq/servant-elm-bidirectional"
+license:             BSD3
+author:              "Olle Fredriksson"
+maintainer:          "fredriksson.olle@gmail.com"
+copyright:           "2019 Olle Fredriksson"
+
+extra-source-files:
+- README.md
+- CHANGELOG.md
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/folq/servant-elm-bidirectional#readme>
+
+dependencies:
+- aeson
+- base >= 4.7 && < 5
+- bound
+- deriving-compat
+- elm-syntax
+- haskell-to-elm
+- lens
+- protolude
+- servant
+- servant-foreign
+- servant-foreign-bidirectional
+- text
+- unordered-containers
+
+ghc-options:
+  - -Wall
+  - -Wcompat
+  - -Widentities
+  - -Wincomplete-record-updates
+  - -Wincomplete-uni-patterns
+  - -Wmissing-home-modules
+  - -Wpartial-fields
+  - -Wredundant-constraints
+  - -Wtabs
+  - -funbox-strict-fields
+
+library:
+  source-dirs: src
+
+tests:
+  servant-elm-bidirectional-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - servant-elm-bidirectional
