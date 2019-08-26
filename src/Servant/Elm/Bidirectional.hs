@@ -158,7 +158,7 @@ elmRequest urlBase moduleName req =
         "Cmd.Cmd"
         (Type.apps
           "Result.Result"
-          [Type.tuple "Http.Error" (Type.App "Maybe.Maybe" $ Type.tuple "Http.Metadata" "String.String"), type_]
+          [Type.tuple "Http.Error" (Type.App "Maybe.Maybe" $ Type.Record [("metadata", "Http.Metadata"), ("body", "String.String")]), type_]
         )
 
     elmReturnDecoder =
@@ -380,7 +380,7 @@ elmRequest urlBase moduleName req =
                         Expression.App "Json.Decode.errorToString" $
                         pure $ Bound.B ()
                       )
-                      (Expression.App "Maybe.Just" $ Expression.tuple (pure $ Bound.F $ Bound.B 0) (pure $ Bound.F $ Bound.B 1))
+                      (Expression.App "Maybe.Just" $ Expression.Record [("metadata", pure $ Bound.F $ Bound.B 0), ("body", pure $ Bound.F $ Bound.B 1)])
                   , Expression.apps "Json.Decode.decodeString" [elmReturnDecoder, pure $ Bound.B 1]
                   ]
               )
