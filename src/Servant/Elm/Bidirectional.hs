@@ -364,14 +364,14 @@ elmRequest urlBase moduleName req =
                 Expression.App "Result.Err" $
                 Expression.tuple "Http.NetworkError" "Maybe.Nothing"
               )
-            , ( Pattern.Con "Http.BadStatus" [Pattern.Var 0, Pattern.Var 1]
+            , ( Pattern.Con "Http.BadStatus_" [Pattern.Var 0, Pattern.Var 1]
               , Bound.toScope $
                 Expression.App "Result.Err" $
                 Expression.tuple
                   (Expression.App "Http.BadStatus" (Expression.App (Expression.Proj "statusCode") $ pure $ Bound.B 0))
-                  (Expression.App "Maybe.Just" $ Expression.tuple (pure $ Bound.B 0) (pure $ Bound.B 1))
+                  (Expression.App "Maybe.Just" $ Expression.Record [("metadata", pure $ Bound.B 0), ("body", pure $ Bound.B 1)])
               )
-            , ( Pattern.Con "Http.GoodStatus" [Pattern.Var 0, Pattern.Var 1]
+            , ( Pattern.Con "Http.GoodStatus_" [Pattern.Var 0, Pattern.Var 1]
               , Bound.toScope $
                 Expression.apps "Result.mapError"
                   [ Expression.Lam $ Bound.toScope $
