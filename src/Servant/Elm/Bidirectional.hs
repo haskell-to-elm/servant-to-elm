@@ -316,7 +316,7 @@ elmRequest urlBase moduleName req =
 
         _
           | any (_optional . snd) (req ^. Servant.headers) ->
-          Expression.apps "List.mapMaybe"
+          Expression.apps "List.filterMap"
           [ "Basics.identity"
           , Expression.List
               [ if _optional arg then
