@@ -93,19 +93,7 @@ instance HasElmType Servant.NoContent where
 
 instance HasElmDecoder Aeson.Value Servant.NoContent where
   elmDecoder =
-    "Json.Decode.string" Expression.|>
-      Expression.App "Json.Decode.andThen"
-      (Expression.Lam $ Bound.toScope $
-        Expression.Case
-          (Expression.Var $ Bound.B ())
-          [ ( Pattern.String ""
-            , Bound.toScope $ Expression.App "Json.Decode.succeed" "NoContent.NoContent"
-            )
-          , ( Pattern.Wildcard
-            , Bound.toScope $ Expression.App "Json.Decode.fail" $ Expression.String "Expected no content"
-            )
-          ]
-      )
+    Expression.App "Json.Decode.succeed" "NoContent.NoContent"
 
 elmRequest
   :: Expression Void
