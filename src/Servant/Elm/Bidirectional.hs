@@ -9,7 +9,6 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -20,8 +19,6 @@ import Protolude hiding (Type, moduleName)
 import qualified Bound
 import Control.Lens hiding (Strict, List)
 import qualified Data.Aeson as Aeson
-import qualified Language.Elm.Pretty as Pretty
-import Servant.API ((:<|>), (:>))
 import qualified Servant.API.Modifiers as Servant
 import qualified Servant.Foreign.Bidirectional as Servant
 
@@ -412,23 +409,3 @@ elmRequest urlBase moduleName req =
     paramArgName :: Int -> Text
     paramArgName i =
       "param" <> show i
-
-type TestApi
-    = "header" :> Servant.Header "header" Text :> Servant.QueryFlag "flag" :> Servant.Get '[Servant.JSON] Int
- :<|> "strictheader" :> Servant.Header' '[Servant.Required, Servant.Strict] "requiredHeader" Text :> Servant.QueryFlag "flag" :> Servant.Get '[Servant.JSON] Int
- :<|> "twoheaders" :> Servant.Header "optionalHeader" Text :> Servant.Header' '[Servant.Required, Servant.Strict] "requiredHeader" Text :> Servant.QueryFlag "flag" :> Servant.Get '[Servant.JSON] Int
- :<|> "paramandbody" :> Servant.QueryParam "param" Int :> Servant.ReqBody '[Servant.JSON] [Text] :> Servant.Post '[Servant.JSON] Servant.NoContent
- :<|> "requiredparamandbody" :> Servant.QueryParam' '[Servant.Required, Servant.Strict] "param" Int :> Servant.ReqBody '[Servant.JSON] [Text] :> Servant.Post '[Servant.JSON] Servant.NoContent
- :<|> "paramsandbody" :> Servant.QueryParams "params" Int :> Servant.ReqBody '[Servant.JSON] Text :> Servant.Put '[Servant.JSON] Servant.NoContent
- :<|> "capture" :> Servant.Capture "id" Int :> Servant.Delete '[Servant.JSON] Servant.NoContent
- :<|> "captures" :> Servant.CaptureAll "ids" Int :> Servant.Get '[Servant.JSON] [Int]
- :<|> "static" :> "url" :> Servant.Get '[Servant.JSON] [Int]
-
-testApi :: [Servant.Request ElmEncoder ElmDecoder]
-testApi =
-  Servant.listFromAPI (Proxy :: Proxy Elm) (Proxy :: Proxy ElmEncoder) (Proxy :: Proxy ElmDecoder) (Proxy :: Proxy TestApi)
-
-apiTest =
-  Pretty.modules $ elmRequest "Config.urlBase" ["My", "Module"] <$> testApi
-
--- TODO: Empty responses
