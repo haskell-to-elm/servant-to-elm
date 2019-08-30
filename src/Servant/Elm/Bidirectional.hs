@@ -228,7 +228,7 @@ elmRequest urlBase moduleName req =
         Servant.Normal ->
           if _optional arg then
             Expression.apps
-              "Maybe.unwrap"
+              "Maybe.Extra.unwrap"
               [ Expression.List []
               , "List.singleton" Expression.<< Expression.App "Basics.++" (Expression.String $ name <> "=")
               , encode $ pure $ paramArgName i
