@@ -87,6 +87,10 @@ instance HasElmDecoder Aeson.Value a => Servant.HasForeignResult Elm '[ Servant.
   resultFor Proxy Proxy Proxy Proxy =
     makeDecoder @Aeson.Value @a
 
+instance HasElmDefinition Servant.NoContent where
+  elmDefinition =
+    Definition.Type "NoContent.NoContent" [("NoContent", [])]
+
 instance HasElmType Servant.NoContent where
   elmType =
     "NoContent.NoContent"
