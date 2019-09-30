@@ -362,16 +362,26 @@ elmRequest urlBase moduleName req =
               )
             , ( Pattern.Con "Http.GoodStatus_" [Pattern.Var 0, Pattern.Var 1]
               , Bound.toScope $
-                Expression.apps "Result.mapError"
-                  [ Expression.Lam $ Bound.toScope $
-                    Expression.tuple
-                      (Expression.App "Http.BadBody" $
-                        Expression.App "Json.Decode.errorToString" $
-                        pure $ Bound.B ()
-                      )
-                      (Expression.App "Maybe.Just" $ Expression.Record [("metadata", pure $ Bound.F $ Bound.B 0), ("body", pure $ Bound.F $ Bound.B 1)])
-                  , Expression.apps "Json.Decode.decodeString" [elmReturnDecoder, pure $ Bound.B 1]
-                  ]
+                if fmap _decodedType (req ^. Servant.returnType) == Just (elmType @Servant.NoContent) then
+                  Expression.If (Expression.apps ("Basics.==") [pure $ Bound.B 1, Expression.String ""])
+                    (Expression.App "Result.Ok" "NoContent.NoContent")
+                    (Expression.App "Result.Err" $
+                      Expression.tuple
+                        (Expression.App "Http.BadBody" $ Expression.String "Expected the response body to be empty")
+                        (Expression.App "Maybe.Just" $ Expression.Record [("metadata", pure $ Bound.B 0), ("body", pure $ Bound.B 1)])
+                    )
+
+                else
+                  Expression.apps "Result.mapError"
+                    [ Expression.Lam $ Bound.toScope $
+                      Expression.tuple
+                        (Expression.App "Http.BadBody" $
+                          Expression.App "Json.Decode.errorToString" $
+                          pure $ Bound.B ()
+                        )
+                        (Expression.App "Maybe.Just" $ Expression.Record [("metadata", pure $ Bound.F $ Bound.B 0), ("body", pure $ Bound.F $ Bound.B 1)])
+                    , Expression.apps "Json.Decode.decodeString" [elmReturnDecoder, pure $ Bound.B 1]
+                    ]
               )
             ]
         ]
