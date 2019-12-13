@@ -99,10 +99,11 @@ instance HasElmDecoder Aeson.Value Servant.NoContent where
   elmDecoder =
     Expression.App "Json.Decode.succeed" "NoContent.NoContent"
 
+-- | Generate an Elm function for making a request to a Servant endpoint.
 elmRequest
-  :: Expression Void
-  -> Name.Module
-  -> Servant.Request ElmEncoder ElmDecoder
+  :: Expression Void -- ^ The URL base of the endpoint
+  -> Name.Module -- ^ The module that the function should be generated into
+  -> Servant.Request ElmEncoder ElmDecoder -- ^ A description of the endpoint
   -> Definition
 elmRequest urlBase moduleName req =
   Definition.Constant
