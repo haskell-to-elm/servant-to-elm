@@ -55,3 +55,22 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - servant-elm-bidirectional
+
+flags:
+  examples:
+    description: Build examples
+    manual: true
+    default: false
+
+executables:
+  user-example:
+    source-dirs: examples
+    main: UserAPI.hs
+    dependencies:
+      - generics-sop
+      - servant
+      - servant-elm-bidirectional
+      - unordered-containers
+    when:
+      condition: "!flag(examples)"
+      buildable: false
