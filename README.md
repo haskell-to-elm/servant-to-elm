@@ -18,7 +18,7 @@ type UserAPI
 
 we can generate the Elm code for making requests against it as follows:
 
-```
+```haskell
 main :: IO ()
 main = do
   let
