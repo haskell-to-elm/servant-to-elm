@@ -1,6 +1,6 @@
-name:                servant-elm-bidirectional
+name:                servant-to-elm
 version:             0.1.0.0
-github:              "folq/servant-elm-bidirectional"
+github:              "folq/servant-to-elm"
 license:             BSD3
 author:              "Olle Fredriksson"
 maintainer:          "fredriksson.olle@gmail.com"
@@ -17,7 +17,7 @@ extra-source-files:
 # To avoid duplicated efforts in documentation and dealing with the
 # complications of embedding Haddock markup inside cabal files, it is
 # common to point users to the README.md file.
-description:         Please see the README on GitHub at <https://github.com/folq/servant-elm-bidirectional#readme>
+description:         Please see the README on GitHub at <https://github.com/folq/servant-to-elm#readme>
 
 dependencies:
 - aeson
@@ -46,7 +46,7 @@ library:
   source-dirs: src
 
 tests:
-  servant-elm-bidirectional-test:
+  servant-to-elm-test:
     main:                Spec.hs
     source-dirs:         test
     ghc-options:
@@ -54,7 +54,7 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - servant-elm-bidirectional
+    - servant-to-elm
 
 flags:
   examples:
@@ -69,7 +69,7 @@ executables:
     dependencies:
       - generics-sop
       - servant
-      - servant-elm-bidirectional
+      - servant-to-elm
       - unordered-containers
     when:
       condition: "!flag(examples)"

@@ -17,7 +17,7 @@ import Servant.API
 
 import qualified Language.Elm.Pretty as Pretty
 import Language.Haskell.To.Elm
-import Servant.Elm.Bidirectional
+import Servant.To.Elm
 
 data User = User
   { name :: Text

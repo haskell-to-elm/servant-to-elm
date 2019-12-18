@@ -1,4 +1,4 @@
-# servant-elm-bidirectional
+# servant-to-elm
 
 This is a library for generating Elm client libraries from Servant API
 definitions.
@@ -131,7 +131,7 @@ See [this file](examples/UserAPI.hs) for the full code with imports.
 
 ## Related projects
 
-Libraries that use or are used by servant-elm-bidirectional:
+Libraries that use or are used by servant-to-elm:
 - [haskell-to-elm](https://github.com/folq/haskell-to-elm) generates Elm types and JSON encoders and decoders from Haskell types.
 - [elm-syntax](https://github.com/folq/elm-syntax) defines Haskell ASTs for Elm's syntax, and lets us pretty-print it.
 - [haskell-to-elm-test](https://github.com/folq/haskell-to-elm-test) does end-to-end testing of this library.

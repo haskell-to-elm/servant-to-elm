@@ -1,3 +1,3 @@
-# Changelog for servant-elm-bidirectional
+# Changelog for servant-to-elm
 
 ## Unreleased changes

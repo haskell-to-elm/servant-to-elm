@@ -14,7 +14,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-module Servant.Elm.Bidirectional where
+module Servant.To.Elm where
 
 import Protolude hiding (Type, functionName, moduleName)
 
