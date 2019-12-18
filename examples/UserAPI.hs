@@ -16,7 +16,6 @@ import qualified Generics.SOP as SOP
 import Servant.API
 
 import qualified Language.Elm.Pretty as Pretty
-import qualified Servant.Foreign.Bidirectional as Servant
 import Language.Haskell.To.Elm
 import Servant.Elm.Bidirectional
 
@@ -52,16 +51,8 @@ type UserAPI
 main :: IO ()
 main = do
   let
-    endpoints :: [Servant.Request ElmEncoder ElmDecoder]
-    endpoints =
-      Servant.listFromAPI
-        (Proxy :: Proxy Elm)
-        (Proxy :: Proxy ElmEncoder)
-        (Proxy :: Proxy ElmDecoder)
-        (Proxy :: Proxy UserAPI)
-
     definitions =
-      map (elmRequest "Config.urlBase" ["Api"]) endpoints
+      map (elmEndpointDefinition "Config.urlBase" ["Api"]) (elmEndpoints @UserAPI)
       <> jsonDefinitions @User
 
     modules =

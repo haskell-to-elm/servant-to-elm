@@ -8,19 +8,24 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 module Servant.Elm.Bidirectional where
 
-import Protolude hiding (Type, moduleName)
+import Protolude hiding (Type, functionName, moduleName)
 
 import qualified Bound
-import Control.Lens hiding (Strict, List)
 import qualified Data.Aeson as Aeson
+import qualified Data.Char as Char
+import qualified Data.Text as Text
+import qualified Network.HTTP.Types as HTTP
+import Servant.API ((:<|>), (:>))
+import qualified Servant.API as Servant
 import qualified Servant.API.Modifiers as Servant
-import qualified Servant.Foreign.Bidirectional as Servant
 
 import Language.Elm.Definition (Definition)
 import qualified Language.Elm.Definition as Definition
@@ -32,108 +37,60 @@ import Language.Elm.Type (Type)
 import qualified Language.Elm.Type as Type
 import Language.Haskell.To.Elm
 
-data Elm
-
-data ElmEncoder = ElmEncoder { _encoder :: Expression Void, _encodedType :: Type Void, _optional :: Bool }
-data ElmDecoder = ElmDecoder { _decoder :: Expression Void, _decodedType :: Type Void }
-
-makeEncoder :: forall value a. HasElmEncoder value a => ElmEncoder
-makeEncoder = ElmEncoder (elmEncoder @value @a) (elmType @a) False
-
-makeOptionalEncoder :: forall value a. HasElmEncoder value a => ElmEncoder
-makeOptionalEncoder = ElmEncoder (elmEncoder @value @a) (elmType @a) True
-
-makeDecoder :: forall value a. HasElmDecoder value a => ElmDecoder
-makeDecoder = ElmDecoder (elmDecoder @value @a) (elmType @a)
-
-instance HasElmEncoder Aeson.Value a => Servant.HasForeignArgument Elm '[ Servant.JSON ] ElmEncoder a where
-  argumentFor Proxy Proxy Proxy Proxy =
-    makeEncoder @Aeson.Value @a
-
-instance (Servant.SBoolI (Servant.FoldRequired mods), HasElmEncoder (Servant.RequiredArgument mods Text) b) => Servant.HasForeignArgument Elm '[ Servant.Header' mods sym a ] ElmEncoder b where
-  argumentFor Proxy Proxy Proxy Proxy =
-    case Servant.sbool @(Servant.FoldRequired mods) of
-      Servant.STrue ->
-        makeEncoder @(Servant.RequiredArgument mods Text) @b
-      Servant.SFalse ->
-        makeOptionalEncoder @(Servant.RequiredArgument mods Text) @b
-
-instance (Servant.SBoolI (Servant.FoldRequired mods), HasElmEncoder (Servant.RequiredArgument mods Text) b) => Servant.HasForeignArgument Elm '[ Servant.QueryParam' mods sym a ] ElmEncoder b where
-  argumentFor Proxy Proxy Proxy Proxy =
-    case Servant.sbool @(Servant.FoldRequired mods) of
-      Servant.STrue ->
-        makeEncoder @(Servant.RequiredArgument mods Text) @b
-
-      Servant.SFalse ->
-        makeOptionalEncoder @(Servant.RequiredArgument mods Text) @b
-
-instance HasElmEncoder Text a => Servant.HasForeignArgument Elm '[ Servant.Capture' mods sym a ] ElmEncoder a where
-  argumentFor Proxy Proxy Proxy Proxy =
-    makeEncoder @Text @a
-
-instance HasElmEncoder Text a => Servant.HasForeignArgument Elm '[ Servant.CaptureAll sym a ] ElmEncoder [a] where
-  argumentFor Proxy Proxy Proxy Proxy =
-    makeEncoder @Text @a
-
-instance HasElmEncoder Text a => Servant.HasForeignArgument Elm '[ Servant.QueryParams sym a ] ElmEncoder [a] where
-  argumentFor Proxy Proxy Proxy Proxy =
-    makeEncoder @Text @a
-
-instance Servant.HasForeignArgument Elm '[ Servant.QueryFlag sym ] ElmEncoder Bool where
-  argumentFor Proxy Proxy Proxy Proxy =
-    ElmEncoder "Basics.identity" "Basics.Bool" False
-
-instance HasElmDecoder Aeson.Value a => Servant.HasForeignResult Elm '[ Servant.JSON ] ElmDecoder a where
-  resultFor Proxy Proxy Proxy Proxy =
-    makeDecoder @Aeson.Value @a
-
-instance HasElmDefinition Servant.NoContent where
-  elmDefinition =
-    Definition.Type "NoContent.NoContent" [("NoContent", [])]
-
-instance HasElmType Servant.NoContent where
-  elmType =
-    "NoContent.NoContent"
-
-instance HasElmDecoder Aeson.Value Servant.NoContent where
-  elmDecoder =
-    Expression.App "Json.Decode.succeed" "NoContent.NoContent"
-
 -- | Generate an Elm function for making a request to a Servant endpoint.
-elmRequest
+elmEndpointDefinition
   :: Expression Void -- ^ The URL base of the endpoint
   -> Name.Module -- ^ The module that the function should be generated into
-  -> Servant.Request ElmEncoder ElmDecoder -- ^ A description of the endpoint
+  -> Endpoint -- ^ A description of the endpoint
   -> Definition
-elmRequest urlBase moduleName req =
+elmEndpointDefinition urlBase moduleName endpoint =
   Definition.Constant
-    (Name.Qualified moduleName $ Servant.camelCase $ req ^. Servant.functionName)
+    (Name.Qualified moduleName functionName)
     elmTypeSig
     (panic "expression not closed" <$> lambdaArgs argNames elmLambdaBody)
   where
+    functionName =
+      case _functionName endpoint of
+        [] ->
+          ""
+
+        firstPart:rest ->
+          firstPart <> foldMap capitalise rest
+
+    capitalise s =
+      case Text.uncons s of
+        Nothing ->
+          ""
+
+        Just (c, s') ->
+          Text.cons (Char.toUpper c) s'
+
     elmTypeSig :: Type Void
     elmTypeSig =
       Type.funs
         (concat
           [ [ _encodedType arg
-            | (_, arg) <- req ^. Servant.headers
+            | (_, arg, _) <- _headers endpoint
             ]
           , [ _encodedType arg
-            | Servant.Capture _ (_, arg) <- numberedPathSegments
+            | Capture _ (_, arg) <- numberedPathSegments
             ]
           , [ case type_ of
-                Servant.Normal ->
+                Required ->
                   vacuous $ _encodedType arg
 
-                Servant.Flag ->
+                Optional ->
                   vacuous $ _encodedType arg
 
-                Servant.List ->
+                Flag ->
+                  vacuous $ _encodedType arg
+
+                List ->
                   vacuous $ Type.App "List.List" $ _encodedType arg
-            | (_, type_, arg) <- req ^. Servant.url . Servant.queryString
+            | (_, type_, arg) <- _queryString $ _url endpoint
             ]
           , [ _encodedType body
-            | Just body <- [req ^. Servant.body]
+            | Just body <- [_body endpoint]
             ]
           ]
         )
@@ -142,7 +99,7 @@ elmRequest urlBase moduleName req =
     elmReturnType =
       let
         type_ =
-          maybe "Basics.()" _decodedType (req ^. Servant.returnType)
+          maybe "Basics.()" _decodedType $ _returnType endpoint
       in
       Type.App
         "Cmd.Cmd"
@@ -152,7 +109,7 @@ elmRequest urlBase moduleName req =
         )
 
     elmReturnDecoder =
-      case req ^. Servant.returnType of
+      case _returnType endpoint of
         Nothing ->
           panic "elmRequest: No return type" -- TODO?
 
@@ -160,32 +117,32 @@ elmRequest urlBase moduleName req =
           vacuous $ _decoder ret
 
     numberedPathSegments =
-      go 0 $ req ^. Servant.url . Servant.path
+      go 0 $ _path $ _url endpoint
       where
         go !i segments =
           case segments of
             [] ->
               []
 
-            Servant.Static p:segments' ->
-              Servant.Static p : go i segments'
+            Static p:segments' ->
+              Static p : go i segments'
 
-            Servant.Capture str arg:segments' ->
-              Servant.Capture str (i, arg) : go (i + 1) segments'
+            Capture str arg:segments' ->
+              Capture str (i, arg) : go (i + 1) segments'
 
     argNames =
       concat
       [ [ headerArgName i
-        | (i, _) <- zip [0..] $ req ^. Servant.headers
+        | (i, _) <- zip [0..] $ _headers endpoint
         ]
       , [ capturedArgName i
-        | Servant.Capture _ (i, _) <- numberedPathSegments
+        | Capture _ (i, _) <- numberedPathSegments
         ]
       , [ paramArgName i
-        | (i, _) <- zip [0..] $ req ^. Servant.url . Servant.queryString
+        | (i, _) <- zip [0..] $ _queryString $ _url endpoint
         ]
       , [ bodyArgName
-        | Just _ <- [req ^. Servant.body]
+        | Just _ <- [_body endpoint]
         ]
       ]
 
@@ -203,7 +160,7 @@ elmRequest urlBase moduleName req =
       Expression.App
         "Http.request"
         (Expression.Record
-          [ ("method", Expression.String $ toS $ req ^. Servant.method)
+          [ ("method", Expression.String $ toS $ _method endpoint)
           , ("headers", elmHeaders)
           , ("url", elmUrl)
           , ("body", elmBody)
@@ -215,32 +172,31 @@ elmRequest urlBase moduleName req =
 
     elmParams =
       [ case type_ of
-        Servant.Normal ->
-          if _optional arg then
-            Expression.apps
-              "Maybe.Extra.unwrap"
-              [ Expression.List []
-              , "List.singleton" Expression.<< Expression.App "Basics.++" (Expression.String $ name <> "=")
-              , encode $ pure $ paramArgName i
-              ]
+        Required ->
+          Expression.List
+            [Expression.String (name <> "=") Expression.++ encode (pure $ paramArgName i)]
 
-          else
-            Expression.List
-              [Expression.String (name <> "=") Expression.++ encode (pure $ paramArgName i)]
+        Optional ->
+          Expression.apps
+            "Maybe.Extra.unwrap"
+            [ Expression.List []
+            , "List.singleton" Expression.<< Expression.App "Basics.++" (Expression.String $ name <> "=")
+            , encode $ pure $ paramArgName i
+            ]
 
-        Servant.Flag ->
+        Flag ->
           Expression.If
             (pure $ paramArgName i)
             (Expression.List [Expression.String name])
             (Expression.List [])
 
-        Servant.List ->
+        List ->
           Expression.apps
             "List.map"
             [ Expression.App "Basics.++" (Expression.String (name <> "[]=")) Expression.<< encoder
             , pure $ paramArgName i
             ]
-      | (i, (name, type_, arg)) <- zip [0..] $ req ^. Servant.url . Servant.queryString
+      | (i, (name, type_, arg)) <- zip [0..] $ _queryString $ _url endpoint
       , let
           encoder =
             vacuous $ _encoder arg
@@ -300,31 +256,33 @@ elmRequest urlBase moduleName req =
               (pure $ headerArgName i)
             ]
       in
-      case req ^. Servant.headers of
+      case _headers endpoint of
         [] ->
           Expression.List []
 
         _
-          | any (_optional . snd) (req ^. Servant.headers) ->
+          | all (\(_, _, required) -> required) (_headers endpoint) ->
+          Expression.List
+            [ headerDecoder i name arg
+            | (i, (name, arg, _)) <- zip [0..] $ _headers endpoint
+            ]
+
+        _ ->
           Expression.apps "List.filterMap"
           [ "Basics.identity"
           , Expression.List
-              [ if _optional arg then
-                  optionalHeaderDecoder i name arg
-                else
+              [ if required then
                   Expression.App "Maybe.Just" $ headerDecoder i name arg
-              | (i, (name, arg)) <- zip [0..] $ req ^. Servant.headers
+
+                else
+                  optionalHeaderDecoder i name arg
+              | (i, (name, arg, required)) <- zip [0..] $ _headers endpoint
               ]
           ]
 
-        _ ->
-          Expression.List
-            [ headerDecoder i name arg
-            | (i, (name, arg)) <- zip [0..] $ req ^. Servant.headers
-            ]
 
     elmBody =
-      case req ^. Servant.body of
+      case _body endpoint of
         Nothing ->
           "Http.emptyBody"
 
@@ -363,7 +321,7 @@ elmRequest urlBase moduleName req =
               )
             , ( Pattern.Con "Http.GoodStatus_" [Pattern.Var 0, Pattern.Var 1]
               , Bound.toScope $
-                if fmap _decodedType (req ^. Servant.returnType) == Just (elmType @Servant.NoContent) then
+                if fmap _decodedType (_returnType endpoint) == Just (elmType @Servant.NoContent) then
                   Expression.If (Expression.apps ("Basics.==") [pure $ Bound.B 1, Expression.String ""])
                     (Expression.App "Result.Ok" "NoContent.NoContent")
                     (Expression.App "Result.Err" $
@@ -389,10 +347,10 @@ elmRequest urlBase moduleName req =
 
     elmPathSegment pathSegment =
       case pathSegment of
-        Servant.Static s ->
+        Static s ->
           Expression.String s
 
-        Servant.Capture _ (i, arg) ->
+        Capture _ (i, arg) ->
           Expression.App
             (vacuous $ _encoder arg)
             (pure $ capturedArgName i)
@@ -412,3 +370,244 @@ elmRequest urlBase moduleName req =
     paramArgName :: Int -> Text
     paramArgName i =
       "param" <> show i
+
+-------------------------------------------------------------------------------
+-- * Endpoints
+
+-- | @'HasElmEndpoints' api@ means that the Servant API @api@ can be converted
+-- to a list of 'Endpoint's, which contains the information we need to generate
+-- an Elm client library for the API.
+class HasElmEndpoints api where
+  elmEndpoints' :: Endpoint -> [Endpoint]
+
+-- | Convert an API to a list of Elm endpoint descriptors, 'Endpoint'.
+--
+-- Usage: @'elmEndpoints' \@MyAPI@
+elmEndpoints :: forall api. HasElmEndpoints api => [Endpoint]
+elmEndpoints = elmEndpoints' @api Endpoint
+  { _url = URL
+    { _path = []
+    , _queryString = []
+    }
+  , _method = "GET"
+  , _headers = []
+  , _body = Nothing
+  , _returnType = Nothing
+  , _functionName = []
+  }
+
+-- | Contains the information we need about an endpoint to generate an Elm
+-- definition that calls it.
+data Endpoint = Endpoint
+  { _url :: URL
+  , _method :: HTTP.Method
+  , _headers :: [(Text, Encoder, Bool)]
+  , _body :: Maybe Encoder
+  , _returnType :: Maybe Decoder
+  , _functionName :: [Text]
+  }
+
+data PathSegment e
+  = Static Text
+  | Capture Text e
+  deriving (Show)
+
+data QueryParamType
+  = Required
+  | Optional
+  | Flag
+  | List
+  deriving (Show)
+
+data URL = URL
+  { _path :: [PathSegment Encoder]
+  , _queryString :: [(Text, QueryParamType, Encoder)]
+  }
+  deriving (Show)
+
+data Encoder = Encoder { _encoder :: Expression Void, _encodedType :: Type Void }
+  deriving (Show)
+data Decoder = Decoder { _decoder :: Expression Void, _decodedType :: Type Void }
+  deriving (Show)
+
+makeEncoder :: forall value a. HasElmEncoder value a => Encoder
+makeEncoder = Encoder (elmEncoder @value @a) (elmType @a)
+
+makeDecoder :: forall value a. HasElmDecoder value a => Decoder
+makeDecoder = Decoder (elmDecoder @value @a) (elmType @a)
+
+instance HasElmEndpoints Servant.EmptyAPI where
+  elmEndpoints' _ = []
+
+instance (HasElmEndpoints a, HasElmEndpoints b) => HasElmEndpoints (a :<|> b) where
+  elmEndpoints' prefix =
+    elmEndpoints' @a prefix <> elmEndpoints' @b prefix
+
+instance (KnownSymbol symbol, HasElmEncoder Text a, HasElmEndpoints api)
+  => HasElmEndpoints (Servant.Capture' mods symbol a :> api) where
+    elmEndpoints' prefix =
+      elmEndpoints' @api prefix
+        { _url = (_url prefix)
+          { _path = _path (_url prefix) <> [Capture str $ makeEncoder @Text @a]
+          }
+        , _functionName = _functionName prefix <> ["by", str]
+        }
+      where
+        str =
+          toS $ symbolVal $ Proxy @symbol
+
+instance (KnownSymbol symbol, HasElmEncoder Text a, HasElmEndpoints api)
+  => HasElmEndpoints (Servant.CaptureAll symbol a :> api) where
+    elmEndpoints' prefix =
+      elmEndpoints' @api prefix
+        { _url = (_url prefix)
+          { _path = _path (_url prefix) <> [Capture str $ makeEncoder @Text @a]
+          }
+        , _functionName = _functionName prefix <> ["by", str]
+        }
+      where
+        str =
+          toS $ symbolVal $ Proxy @symbol
+
+instance (Servant.ReflectMethod method, HasElmDecoder Aeson.Value a, list ~ '[Servant.JSON])
+  => HasElmEndpoints (Servant.Verb method status list a) where
+    elmEndpoints' prefix =
+      [ prefix
+        { _method = method
+        , _returnType = Just $ makeDecoder @Aeson.Value @a
+        , _functionName = Text.toLower (toS method) : _functionName prefix
+        }
+      ]
+      where
+        method =
+          Servant.reflectMethod $ Proxy @method
+
+instance
+  ( Servant.SBoolI (Servant.FoldRequired mods)
+  , KnownSymbol symbol
+  , HasElmEncoder (Servant.RequiredArgument mods Text) (Servant.RequiredArgument mods a)
+  , HasElmEndpoints api
+  ) => HasElmEndpoints (Servant.Header' mods symbol a :> api) where
+    elmEndpoints' prefix =
+      elmEndpoints' @api prefix
+        { _headers = _headers prefix <>
+          [ ( toS $ symbolVal $ Proxy @symbol
+            , makeEncoder @(Servant.RequiredArgument mods Text) @(Servant.RequiredArgument mods a)
+            , case Servant.sbool @(Servant.FoldRequired mods) of
+                Servant.STrue ->
+                  True
+
+                Servant.SFalse ->
+                  False
+            )
+          ]
+        }
+
+instance
+  ( Servant.SBoolI (Servant.FoldRequired mods)
+  , KnownSymbol symbol
+  , HasElmEncoder (Servant.RequiredArgument mods Text) (Servant.RequiredArgument mods a)
+  , HasElmEndpoints api
+  ) => HasElmEndpoints (Servant.QueryParam' mods symbol a :> api) where
+    elmEndpoints' prefix =
+      elmEndpoints' @api prefix
+        { _url = (_url prefix)
+          { _queryString =
+            _queryString (_url prefix) <>
+            [ ( toS $ symbolVal $ Proxy @symbol
+              , case Servant.sbool @(Servant.FoldRequired mods) of
+                  Servant.STrue ->
+                    Required
+
+                  Servant.SFalse ->
+                    Optional
+              , makeEncoder @(Servant.RequiredArgument mods Text) @(Servant.RequiredArgument mods a)
+              )
+            ]
+          }
+        }
+
+instance (KnownSymbol symbol, HasElmEncoder Text a, HasElmEndpoints api)
+  => HasElmEndpoints (Servant.QueryParams symbol a :> api) where
+    elmEndpoints' prefix =
+      elmEndpoints' @api prefix
+        { _url = (_url prefix)
+          { _queryString =
+            _queryString (_url prefix) <>
+            [ ( toS $ symbolVal $ Proxy @symbol
+              , List
+              , makeEncoder @Text @a
+              )
+            ]
+          }
+        }
+
+instance (KnownSymbol symbol, HasElmEndpoints api)
+  => HasElmEndpoints (Servant.QueryFlag symbol :> api) where
+    elmEndpoints' prefix =
+      elmEndpoints' @api prefix
+        { _url = (_url prefix)
+          { _queryString =
+            _queryString (_url prefix) <>
+            [ ( toS $ symbolVal $ Proxy @symbol
+              , Flag
+              , Encoder "Basics.identity" "Basics.Bool"
+              )
+            ]
+          }
+        }
+
+instance (HasElmEncoder Aeson.Value a, HasElmEndpoints api, list ~ '[Servant.JSON])
+  => HasElmEndpoints (Servant.ReqBody' mods list a :> api) where
+    elmEndpoints' prefix =
+      elmEndpoints' @api prefix
+        { _body = Just $ makeEncoder @Aeson.Value @a
+        }
+
+instance (KnownSymbol path, HasElmEndpoints api) => HasElmEndpoints (path :> api) where
+  elmEndpoints' prefix =
+    elmEndpoints' @api prefix
+      { _url = (_url prefix)
+        { _path = _path (_url prefix) <> [Static path]
+        }
+      , _functionName = _functionName prefix <> [path]
+      }
+    where
+      path =
+        toS $ symbolVal $ Proxy @path
+
+instance HasElmEndpoints api => HasElmEndpoints (Servant.RemoteHost :> api) where
+  elmEndpoints' = elmEndpoints' @api
+
+instance HasElmEndpoints api => HasElmEndpoints (Servant.IsSecure :> api) where
+  elmEndpoints' = elmEndpoints' @api
+
+instance HasElmEndpoints api => HasElmEndpoints (Servant.Vault :> api) where
+  elmEndpoints' = elmEndpoints' @api
+
+instance HasElmEndpoints api => HasElmEndpoints (Servant.WithNamedContext name context api) where
+  elmEndpoints' = elmEndpoints' @api
+
+instance HasElmEndpoints api => HasElmEndpoints (Servant.HttpVersion :> api) where
+  elmEndpoints' = elmEndpoints' @api
+
+instance HasElmEndpoints api => HasElmEndpoints (Servant.Summary summary :> api) where
+  elmEndpoints' = elmEndpoints' @api
+
+instance HasElmEndpoints api => HasElmEndpoints (Servant.Description description :> api) where
+  elmEndpoints' = elmEndpoints' @api
+
+-------------------------------------------------------------------------------
+-- Orphans
+
+instance HasElmDefinition Servant.NoContent where
+  elmDefinition =
+    Definition.Type "NoContent.NoContent" [("NoContent", [])]
+
+instance HasElmType Servant.NoContent where
+  elmType =
+    "NoContent.NoContent"
+
+instance HasElmDecoder Aeson.Value Servant.NoContent where
+  elmDecoder =
+    Expression.App "Json.Decode.succeed" "NoContent.NoContent"

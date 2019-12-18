@@ -22,16 +22,8 @@ we can generate the Elm code for making requests against it as follows:
 main :: IO ()
 main = do
   let
-    endpoints :: [Servant.Request ElmEncoder ElmDecoder]
-    endpoints =
-      Servant.listFromAPI
-        (Proxy :: Proxy Elm)
-        (Proxy :: Proxy ElmEncoder)
-        (Proxy :: Proxy ElmDecoder)
-        (Proxy :: Proxy UserAPI)
-
     definitions =
-      map (elmRequest "Config.urlBase" ["Api"]) endpoints
+      map (elmEndpointDefinition "Config.urlBase" ["Api"]) (elmEndpoints @UserAPI)
       <> jsonDefinitions @User
 
     modules =
@@ -109,7 +101,6 @@ postUser a =
                 , body = d }))
     , timeout = Nothing
     , tracker = Nothing }
-
 module Api.User exposing (..)
 
 import Json.Decode
@@ -144,7 +135,6 @@ Libraries that use or are used by servant-elm-bidirectional:
 - [haskell-to-elm](https://github.com/folq/haskell-to-elm) generates Elm types and JSON encoders and decoders from Haskell types.
 - [elm-syntax](https://github.com/folq/elm-syntax) defines Haskell ASTs for Elm's syntax, and lets us pretty-print it.
 - [haskell-to-elm-test](https://github.com/folq/haskell-to-elm-test) does end-to-end testing of this library.
-- [servant-foreign-bidirectional](https://github.com/folq/servant-foreign-bidirectional) is used by `servant-elm-bidirectional`
 
 Others:
 - [servant-elm](http://hackage.haskell.org/package/servant-elm)

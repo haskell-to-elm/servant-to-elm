@@ -25,10 +25,10 @@ dependencies:
 - bound
 - elm-syntax
 - haskell-to-elm
-- lens
+- http-types
 - protolude
 - servant
-- servant-foreign-bidirectional
+- text
 
 ghc-options:
   - -Wall
