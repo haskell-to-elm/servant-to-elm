@@ -129,6 +129,20 @@ In an actual project we would be writing the code to disk instead of printing it
 
 See [this file](examples/UserAPI.hs) for the full code with imports.
 
+## Auth-protected routes
+
+If you use `AuthProtect` from `Servant.API.Experimental.Auth`, the following
+code can be used:
+
+```haskell
+instance HasElmEndpoints api => HasElmEndpoints (AuthProtect "auth" :> api) where
+  elmEndpoints' = elmEndpoints' @(Header' '[ Required, Strict] "Authorization" Token :> api)
+```
+
+This makes endpoints under `AuthProtect "auth"` take an extra `Token` parameter
+which are added as authorization headers to the requests. This assumes that
+`Token` has appropriate instances for `HasElmType` and `HasElmEncoder Text`.
+
 ## Related projects
 
 Libraries that use or are used by servant-to-elm:
