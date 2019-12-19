@@ -20,15 +20,15 @@ category:            Servant, API, Elm, Compiler
 description:         Please see the README on GitHub at <https://github.com/folq/servant-to-elm#readme>
 
 dependencies:
-- aeson
+- aeson >= 1.4.0
 - base >= 4.7 && < 5
-- bound
-- elm-syntax
-- haskell-to-elm
-- http-types
-- protolude
-- servant
-- text
+- bound >= 2.0.0
+- elm-syntax >= 0.1.0 && < 0.1.1
+- haskell-to-elm >= 0.1.0 && < 0.1.1
+- http-types >= 0.12.0
+- protolude >= 0.2.3
+- servant >= 0.16.0
+- text >= 1.2.0
 
 ghc-options:
   - -Wall
