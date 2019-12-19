@@ -1,4 +1,4 @@
-# servant-to-elm
+# servant-to-elm [![Hackage](https://img.shields.io/hackage/v/servant-to-elm.svg)](https://hackage.haskell.org/package/servant-to-elm)
 
 This is a library for generating Elm client libraries from Servant API
 definitions.
