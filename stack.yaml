@@ -3,4 +3,4 @@ packages:
 - .
 extra-deps:
 - elm-syntax-0.1.0.0
-- haskell-to-elm-0.1.0.0
+- haskell-to-elm-0.2.0.0

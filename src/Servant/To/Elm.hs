@@ -600,13 +600,9 @@ instance HasElmEndpoints api => HasElmEndpoints (Servant.Description description
 -------------------------------------------------------------------------------
 -- Orphans
 
-instance HasElmDefinition Servant.NoContent where
-  elmDefinition =
-    Definition.Type "NoContent.NoContent" [("NoContent", [])]
-
 instance HasElmType Servant.NoContent where
-  elmType =
-    "NoContent.NoContent"
+  elmDefinition =
+    Just $ Definition.Type "NoContent.NoContent" [("NoContent", [])]
 
 instance HasElmDecoder Aeson.Value Servant.NoContent where
   elmDecoder =
