@@ -25,6 +25,7 @@ import qualified Data.Text as Text
 import qualified Network.HTTP.Types as HTTP
 import Servant.API ((:<|>), (:>))
 import qualified Servant.API as Servant
+import qualified Servant.Multipart as Servant
 import qualified Servant.API.Modifiers as Servant
 
 import Language.Elm.Definition (Definition)
@@ -564,6 +565,13 @@ instance (HasElmEncoder Aeson.Value a, HasElmEndpoints api, list ~ '[Servant.JSO
         { _body = Just ("Http.jsonBody", makeEncoder @Aeson.Value @a)
         }
 
+instance (HasElmEncoder (Servant.MultipartData tag) a, HasElmEndpoints api)
+  => HasElmEndpoints (Servant.MultipartForm tag a :> api) where
+    elmEndpoints' prefix =
+      elmEndpoints' @api prefix
+        { _body = Just ("Http.multipartBody", makeEncoder @(Servant.MultipartData tag) @a)
+        }
+
 instance (KnownSymbol path, HasElmEndpoints api) => HasElmEndpoints (path :> api) where
   elmEndpoints' prefix =
     elmEndpoints' @api prefix
@@ -607,3 +615,11 @@ instance HasElmType Servant.NoContent where
 instance HasElmDecoder Aeson.Value Servant.NoContent where
   elmDecoder =
     Expression.App "Json.Decode.succeed" "NoContent.NoContent"
+
+instance HasElmType (Servant.MultipartData tag) where
+  elmType =
+    Type.App "List.List" "Http.Part"
+
+instance HasElmEncoder (Servant.MultipartData tag) (Servant.MultipartData tag) where
+  elmEncoder =
+    "Basics.identity"
