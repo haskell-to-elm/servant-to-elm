@@ -90,7 +90,7 @@ elmEndpointDefinition urlBase moduleName endpoint =
             | (_, type_, arg) <- _queryString $ _url endpoint
             ]
           , [ _encodedType body
-            | Just body <- [_body endpoint]
+            | Just (_, body) <- [_body endpoint]
             ]
           ]
         )
@@ -286,9 +286,9 @@ elmEndpointDefinition urlBase moduleName endpoint =
         Nothing ->
           "Http.emptyBody"
 
-        Just body ->
+        Just (bodyType, body) ->
           Expression.App
-            "Http.jsonBody"
+            (vacuous bodyType)
             (Expression.App (vacuous $ _encoder body) $ pure bodyArgName)
 
     elmExpect =
@@ -402,7 +402,7 @@ data Endpoint = Endpoint
   { _url :: URL
   , _method :: HTTP.Method
   , _headers :: [(Text, Encoder, Bool)]
-  , _body :: Maybe Encoder
+  , _body :: Maybe (Expression Void, Encoder)
   , _returnType :: Maybe Decoder
   , _functionName :: [Text]
   }
@@ -561,7 +561,7 @@ instance (HasElmEncoder Aeson.Value a, HasElmEndpoints api, list ~ '[Servant.JSO
   => HasElmEndpoints (Servant.ReqBody' mods list a :> api) where
     elmEndpoints' prefix =
       elmEndpoints' @api prefix
-        { _body = Just $ makeEncoder @Aeson.Value @a
+        { _body = Just ("Http.jsonBody", makeEncoder @Aeson.Value @a)
         }
 
 instance (KnownSymbol path, HasElmEndpoints api) => HasElmEndpoints (path :> api) where
