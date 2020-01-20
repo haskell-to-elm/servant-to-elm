@@ -27,7 +27,8 @@ main = do
       <> jsonDefinitions @User
 
     modules =
-      Pretty.modules definitions
+      Pretty.modules $
+        Simplification.simplifyDefinition <$> definitions
 
   forM_ (HashMap.toList modules) $ \(_moduleName, contents) ->
     print contents
@@ -50,7 +51,7 @@ getUser : Cmd (Result (Http.Error , Maybe { metadata : Http.Metadata
 getUser =
     Http.request { method = "GET"
     , headers = []
-    , url = String.join "/" [Config.urlBase, "user"]
+    , url = Config.urlBase ++ "/user"
     , body = Http.emptyBody
     , expect = Http.expectStringResponse identity (\a -> case a of
         Http.BadUrl_ b ->
@@ -77,7 +78,7 @@ postUser : Api.User.User -> Cmd (Result (Http.Error , Maybe { metadata : Http.Me
 postUser a =
     Http.request { method = "POST"
     , headers = []
-    , url = String.join "/" [Config.urlBase, "user"]
+    , url = Config.urlBase ++ "/user"
     , body = Http.jsonBody (Api.User.encoder a)
     , expect = Http.expectStringResponse identity (\b -> case b of
         Http.BadUrl_ c ->

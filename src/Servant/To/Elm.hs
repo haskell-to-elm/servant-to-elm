@@ -186,7 +186,7 @@ elmEndpointDefinition urlBase moduleName endpoint =
             ]
 
         Flag ->
-          Expression.If
+          Expression.if_
             (pure $ paramArgName i)
             (Expression.List [Expression.String name])
             (Expression.List [])
@@ -323,7 +323,7 @@ elmEndpointDefinition urlBase moduleName endpoint =
             , ( Pattern.Con "Http.GoodStatus_" [Pattern.Var 0, Pattern.Var 1]
               , Bound.toScope $
                 if fmap _decodedType (_returnType endpoint) == Just (elmType @Servant.NoContent) then
-                  Expression.If (Expression.apps ("Basics.==") [pure $ Bound.B 1, Expression.String ""])
+                  Expression.if_ (Expression.apps ("Basics.==") [pure $ Bound.B 1, Expression.String ""])
                     (Expression.App "Result.Ok" "NoContent.NoContent")
                     (Expression.App "Result.Err" $
                       Expression.tuple

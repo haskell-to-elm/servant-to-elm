@@ -23,8 +23,8 @@ dependencies:
 - aeson >= 1.4.0
 - base >= 4.7 && < 5
 - bound >= 2.0.0
-- elm-syntax >= 0.1.0 && < 0.1.1
-- haskell-to-elm >= 0.2.0 && < 0.2.1
+- elm-syntax >= 0.2.0 && < 0.2.1
+- haskell-to-elm >= 0.2.0 && < 0.2.2
 - http-types >= 0.12.0
 - protolude >= 0.2.3
 - servant >= 0.16.0

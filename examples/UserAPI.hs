@@ -16,6 +16,7 @@ import qualified Generics.SOP as SOP
 import Servant.API
 
 import qualified Language.Elm.Pretty as Pretty
+import qualified Language.Elm.Simplification as Simplification
 import Language.Haskell.To.Elm
 import Servant.To.Elm
 
@@ -48,7 +49,8 @@ main = do
       <> jsonDefinitions @User
 
     modules =
-      Pretty.modules definitions
+      Pretty.modules $
+        Simplification.simplifyDefinition <$> definitions
 
   forM_ (HashMap.toList modules) $ \(_moduleName, contents) ->
     print contents
