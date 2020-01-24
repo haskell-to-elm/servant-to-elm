@@ -2,6 +2,10 @@
 
 ## Unreleased changes
 
+## 0.4.0.0
+
+- Make endpoints that return NoContent (HTTP status code 204) return `()` on the Elm side, and remove instances for the `NoContent` type
+
 ## 0.3.1.0
 
 - Update to `elm-syntax-0.2.0.0`, adding simplification of the generated definitions.
