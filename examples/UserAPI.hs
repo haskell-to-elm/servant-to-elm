@@ -39,7 +39,7 @@ instance HasElmEncoder Aeson.Value User where
 
 type UserAPI
   = "user" :> Get '[JSON] User
-  :<|> "user" :> ReqBody '[JSON] User :> Post '[JSON] NoContent
+  :<|> "user" :> ReqBody '[JSON] User :> PostNoContent '[JSON] NoContent
 
 main :: IO ()
 main = do

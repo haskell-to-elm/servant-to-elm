@@ -13,7 +13,7 @@ Given a Servant API like the following
 ```haskell
 type UserAPI
   = "user" :> Get '[JSON] User
-  :<|> "user" :> ReqBody '[JSON] User :> Post '[JSON] NoContent
+  :<|> "user" :> ReqBody '[JSON] User :> PostNoContent '[JSON] NoContent
 ```
 
 we can generate the Elm code for making requests against it as follows:
@@ -43,7 +43,6 @@ import Api.User
 import Config
 import Http
 import Json.Decode
-import NoContent
 
 
 getUser : Cmd (Result (Http.Error , Maybe { metadata : Http.Metadata
@@ -74,7 +73,7 @@ getUser =
 
 
 postUser : Api.User.User -> Cmd (Result (Http.Error , Maybe { metadata : Http.Metadata
-    , body : String }) NoContent.NoContent)
+    , body : String }) ())
 postUser a =
     Http.request { method = "POST"
     , headers = []
@@ -95,7 +94,7 @@ postUser a =
 
         Http.GoodStatus_ c d ->
             if d == "" then
-                Ok NoContent.NoContent
+                Ok ()
 
             else
                 Err (Http.BadBody "Expected the response body to be empty" , Just { metadata = c
