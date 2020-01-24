@@ -100,7 +100,15 @@ elmEndpointDefinition urlBase moduleName endpoint =
     elmReturnType =
       let
         type_ =
-          maybe "Basics.()" _decodedType $ _returnType endpoint
+          case _returnType endpoint of
+            Nothing ->
+              "Basics.()"
+
+            Just (Left Servant.NoContent) ->
+              "Basics.()"
+
+            Just (Right decoder) ->
+              _decodedType decoder
       in
       Type.App
         "Cmd.Cmd"
@@ -108,14 +116,6 @@ elmEndpointDefinition urlBase moduleName endpoint =
           "Result.Result"
           [Type.tuple "Http.Error" (Type.App "Maybe.Maybe" $ Type.Record [("metadata", "Http.Metadata"), ("body", "String.String")]), type_]
         )
-
-    elmReturnDecoder =
-      case _returnType endpoint of
-        Nothing ->
-          panic "elmRequest: No return type" -- TODO?
-
-        Just ret ->
-          vacuous $ _decoder ret
 
     numberedPathSegments =
       go 0 $ _path $ _url endpoint
@@ -322,26 +322,30 @@ elmEndpointDefinition urlBase moduleName endpoint =
               )
             , ( Pattern.Con "Http.GoodStatus_" [Pattern.Var 0, Pattern.Var 1]
               , Bound.toScope $
-                if fmap _decodedType (_returnType endpoint) == Just (elmType @Servant.NoContent) then
-                  Expression.if_ (Expression.apps ("Basics.==") [pure $ Bound.B 1, Expression.String ""])
-                    (Expression.App "Result.Ok" "NoContent.NoContent")
-                    (Expression.App "Result.Err" $
-                      Expression.tuple
-                        (Expression.App "Http.BadBody" $ Expression.String "Expected the response body to be empty")
-                        (Expression.App "Maybe.Just" $ Expression.Record [("metadata", pure $ Bound.B 0), ("body", pure $ Bound.B 1)])
-                    )
+                case _returnType endpoint of
+                  Nothing ->
+                    panic "elmRequest: No return type" -- TODO?
 
-                else
-                  Expression.apps "Result.mapError"
-                    [ Expression.Lam $ Bound.toScope $
-                      Expression.tuple
-                        (Expression.App "Http.BadBody" $
-                          Expression.App "Json.Decode.errorToString" $
-                          pure $ Bound.B ()
-                        )
-                        (Expression.App "Maybe.Just" $ Expression.Record [("metadata", pure $ Bound.F $ Bound.B 0), ("body", pure $ Bound.F $ Bound.B 1)])
-                    , Expression.apps "Json.Decode.decodeString" [elmReturnDecoder, pure $ Bound.B 1]
-                    ]
+                  Just (Left Servant.NoContent) ->
+                    Expression.if_ (Expression.apps ("Basics.==") [pure $ Bound.B 1, Expression.String ""])
+                      (Expression.App "Result.Ok" "Basics.()")
+                      (Expression.App "Result.Err" $
+                        Expression.tuple
+                          (Expression.App "Http.BadBody" $ Expression.String "Expected the response body to be empty")
+                          (Expression.App "Maybe.Just" $ Expression.Record [("metadata", pure $ Bound.B 0), ("body", pure $ Bound.B 1)])
+                      )
+
+                  Just (Right elmReturnDecoder) ->
+                    Expression.apps "Result.mapError"
+                      [ Expression.Lam $ Bound.toScope $
+                        Expression.tuple
+                          (Expression.App "Http.BadBody" $
+                            Expression.App "Json.Decode.errorToString" $
+                            pure $ Bound.B ()
+                          )
+                          (Expression.App "Maybe.Just" $ Expression.Record [("metadata", pure $ Bound.F $ Bound.B 0), ("body", pure $ Bound.F $ Bound.B 1)])
+                      , Expression.apps "Json.Decode.decodeString" [vacuous $ _decoder elmReturnDecoder, pure $ Bound.B 1]
+                      ]
               )
             ]
         ]
@@ -404,7 +408,7 @@ data Endpoint = Endpoint
   , _method :: HTTP.Method
   , _headers :: [(Text, Encoder, Bool)]
   , _body :: Maybe (Expression Void, Encoder)
-  , _returnType :: Maybe Decoder
+  , _returnType :: Maybe (Either Servant.NoContent Decoder)
   , _functionName :: [Text]
   }
 
@@ -471,11 +475,23 @@ instance (KnownSymbol symbol, HasElmEncoder Text a, HasElmEndpoints api)
           toS $ symbolVal $ Proxy @symbol
 
 instance (Servant.ReflectMethod method, HasElmDecoder Aeson.Value a, list ~ '[Servant.JSON])
-  => HasElmEndpoints (Servant.Verb method status list a) where
+  => HasElmEndpoints (Servant.Verb method 200 list a) where
     elmEndpoints' prefix =
       [ prefix
         { _method = method
-        , _returnType = Just $ makeDecoder @Aeson.Value @a
+        , _returnType = Just $ Right $ makeDecoder @Aeson.Value @a
+        , _functionName = Text.toLower (toS method) : _functionName prefix
+        }
+      ]
+      where
+        method =
+          Servant.reflectMethod $ Proxy @method
+
+instance Servant.ReflectMethod method => HasElmEndpoints (Servant.Verb method 204 list a) where
+    elmEndpoints' prefix =
+      [ prefix
+        { _method = method
+        , _returnType = Just $ Left Servant.NoContent
         , _functionName = Text.toLower (toS method) : _functionName prefix
         }
       ]
@@ -607,14 +623,6 @@ instance HasElmEndpoints api => HasElmEndpoints (Servant.Description description
 
 -------------------------------------------------------------------------------
 -- Orphans
-
-instance HasElmType Servant.NoContent where
-  elmDefinition =
-    Just $ Definition.Type "NoContent.NoContent" [("NoContent", [])]
-
-instance HasElmDecoder Aeson.Value Servant.NoContent where
-  elmDecoder =
-    Expression.App "Json.Decode.succeed" "NoContent.NoContent"
 
 instance HasElmType (Servant.MultipartData tag) where
   elmType =
