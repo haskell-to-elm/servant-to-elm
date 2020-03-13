@@ -47,7 +47,8 @@ elmEndpointDefinition
 elmEndpointDefinition urlBase moduleName endpoint =
   Definition.Constant
     (Name.Qualified moduleName functionName)
-    elmTypeSig
+    0
+    (Bound.toScope $ vacuous $ elmTypeSig)
     (panic "expression not closed" <$> lambdaArgs argNames elmLambdaBody)
   where
     functionName =
