@@ -1,0 +1,102 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.31.2.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 06cbc1099ac24f0854793a96e85589086f7cb8409a277a16015d1c10e79f321c
+
+name:           servant-to-elm
+version:        0.4.0.0
+synopsis:       Automatically generate Elm clients for Servant APIs
+description:    Please see the README on GitHub at <https://github.com/folq/servant-to-elm#readme>
+category:       Servant, API, Elm, Compiler
+homepage:       https://github.com/folq/servant-to-elm#readme
+bug-reports:    https://github.com/folq/servant-to-elm/issues
+author:         Olle Fredriksson
+maintainer:     fredriksson.olle@gmail.com
+copyright:      2019 Olle Fredriksson
+license:        BSD3
+license-file:   LICENSE
+tested-with:    GHC == 8.4.3, GHC == 8.6.5, GHC == 8.8.3
+build-type:     Simple
+extra-source-files:
+    README.md
+    CHANGELOG.md
+
+source-repository head
+  type: git
+  location: https://github.com/folq/servant-to-elm
+
+flag examples
+  description: Build examples
+  manual: True
+  default: False
+
+library
+  exposed-modules:
+      Servant.To.Elm
+  other-modules:
+      Paths_servant_to_elm
+  hs-source-dirs:
+      src
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -Wtabs -funbox-strict-fields
+  build-depends:
+      aeson >=1.4.0
+    , base >=4.7 && <5
+    , bound >=2.0.0
+    , elm-syntax >=0.3.0 && <0.3.1
+    , haskell-to-elm >=0.3.0 && <0.3.1
+    , http-types >=0.12.0
+    , protolude >=0.2.3
+    , servant >=0.16.0
+    , servant-multipart >=0.11.0
+    , text >=1.2.0
+  default-language: Haskell2010
+
+executable user-example
+  main-is: UserAPI.hs
+  other-modules:
+      Paths_servant_to_elm
+  hs-source-dirs:
+      examples
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -Wtabs -funbox-strict-fields
+  build-depends:
+      aeson >=1.4.0
+    , base >=4.7 && <5
+    , bound >=2.0.0
+    , elm-syntax >=0.3.0 && <0.3.1
+    , generics-sop
+    , haskell-to-elm >=0.3.0 && <0.3.1
+    , http-types >=0.12.0
+    , protolude >=0.2.3
+    , servant
+    , servant-multipart >=0.11.0
+    , servant-to-elm
+    , text >=1.2.0
+    , unordered-containers
+  if !flag(examples)
+    buildable: False
+  default-language: Haskell2010
+
+test-suite servant-to-elm-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_servant_to_elm
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -Wtabs -funbox-strict-fields -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      aeson >=1.4.0
+    , base >=4.7 && <5
+    , bound >=2.0.0
+    , elm-syntax >=0.3.0 && <0.3.1
+    , haskell-to-elm >=0.3.0 && <0.3.1
+    , http-types >=0.12.0
+    , protolude >=0.2.3
+    , servant >=0.16.0
+    , servant-multipart >=0.11.0
+    , servant-to-elm
+    , text >=1.2.0
+  default-language: Haskell2010
