@@ -1,18 +1,18 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeOperators #-}
+{-# language DataKinds #-}
+{-# language DeriveAnyClass #-}
+{-# language DeriveGeneric #-}
+{-# language MultiParamTypeClasses #-}
+{-# language OverloadedStrings #-}
+{-# language TypeApplications #-}
+{-# language TypeOperators #-}
 module UserAPI where
 
-import Protolude
-
 import qualified Data.Aeson as Aeson
+import Data.Foldable
 import qualified Data.HashMap.Lazy as HashMap
+import Data.Text (Text)
 import qualified Generics.SOP as SOP
+import GHC.Generics
 import Servant.API
 
 import qualified Language.Elm.Pretty as Pretty

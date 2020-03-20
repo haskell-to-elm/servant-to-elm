@@ -1,32 +1,35 @@
-{-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE PolyKinds #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE UndecidableInstances #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# language AllowAmbiguousTypes #-}
+{-# language BangPatterns #-}
+{-# language DataKinds #-}
+{-# language DuplicateRecordFields #-}
+{-# language FlexibleContexts #-}
+{-# language FlexibleInstances #-}
+{-# language GADTs #-}
+{-# language MultiParamTypeClasses #-}
+{-# language OverloadedStrings #-}
+{-# language PolyKinds #-}
+{-# language ScopedTypeVariables #-}
+{-# language TypeApplications #-}
+{-# language TypeOperators #-}
+{-# language UndecidableInstances #-}
+{-# options_ghc -fno-warn-orphans #-}
 module Servant.To.Elm where
-
-import Protolude hiding (Type, functionName, moduleName)
 
 import qualified Bound
 import qualified Data.Aeson as Aeson
 import qualified Data.Char as Char
+import Data.Proxy
+import Data.String
+import Data.Text (Text)
 import qualified Data.Text as Text
+import qualified Data.Text.Encoding as Text
+import Data.Void
+import GHC.TypeLits
 import qualified Network.HTTP.Types as HTTP
 import Servant.API ((:<|>), (:>))
 import qualified Servant.API as Servant
-import qualified Servant.Multipart as Servant
 import qualified Servant.API.Modifiers as Servant
+import qualified Servant.Multipart as Servant
 
 import Language.Elm.Definition (Definition)
 import qualified Language.Elm.Definition as Definition
@@ -49,7 +52,7 @@ elmEndpointDefinition urlBase moduleName endpoint =
     (Name.Qualified moduleName functionName)
     0
     (Bound.toScope $ vacuous $ elmTypeSig)
-    (panic "expression not closed" <$> lambdaArgs argNames elmLambdaBody)
+    (error "expression not closed" <$> lambdaArgs argNames elmLambdaBody)
   where
     functionName =
       case _functionName endpoint of
@@ -162,7 +165,7 @@ elmEndpointDefinition urlBase moduleName endpoint =
       Expression.App
         "Http.request"
         (Expression.Record
-          [ ("method", Expression.String $ toS $ _method endpoint)
+          [ ("method", Expression.String $ Text.decodeUtf8 $ _method endpoint)
           , ("headers", elmHeaders)
           , ("url", elmUrl)
           , ("body", elmBody)
@@ -325,7 +328,7 @@ elmEndpointDefinition urlBase moduleName endpoint =
               , Bound.toScope $
                 case _returnType endpoint of
                   Nothing ->
-                    panic "elmRequest: No return type" -- TODO?
+                    error "elmRequest: No return type" -- TODO?
 
                   Just (Left Servant.NoContent) ->
                     Expression.if_ (Expression.apps ("Basics.==") [pure $ Bound.B 1, Expression.String ""])
@@ -367,15 +370,15 @@ elmEndpointDefinition urlBase moduleName endpoint =
 
     headerArgName :: Int -> Text
     headerArgName i =
-      "header" <> show i
+      "header" <> fromString (show i)
 
     capturedArgName :: Int -> Text
     capturedArgName i =
-      "capture" <> show i
+      "capture" <> fromString (show i)
 
     paramArgName :: Int -> Text
     paramArgName i =
-      "param" <> show i
+      "param" <> fromString (show i)
 
 -------------------------------------------------------------------------------
 -- * Endpoints
@@ -460,7 +463,7 @@ instance (KnownSymbol symbol, HasElmEncoder Text a, HasElmEndpoints api)
         }
       where
         str =
-          toS $ symbolVal $ Proxy @symbol
+          fromString $ symbolVal $ Proxy @symbol
 
 instance (KnownSymbol symbol, HasElmEncoder Text a, HasElmEndpoints api)
   => HasElmEndpoints (Servant.CaptureAll symbol a :> api) where
@@ -473,7 +476,7 @@ instance (KnownSymbol symbol, HasElmEncoder Text a, HasElmEndpoints api)
         }
       where
         str =
-          toS $ symbolVal $ Proxy @symbol
+          fromString $ symbolVal $ Proxy @symbol
 
 instance (Servant.ReflectMethod method, HasElmDecoder Aeson.Value a, list ~ '[Servant.JSON])
   => HasElmEndpoints (Servant.Verb method 200 list a) where
@@ -481,7 +484,7 @@ instance (Servant.ReflectMethod method, HasElmDecoder Aeson.Value a, list ~ '[Se
       [ prefix
         { _method = method
         , _returnType = Just $ Right $ makeDecoder @Aeson.Value @a
-        , _functionName = Text.toLower (toS method) : _functionName prefix
+        , _functionName = Text.toLower (Text.decodeUtf8 method) : _functionName prefix
         }
       ]
       where
@@ -493,7 +496,7 @@ instance Servant.ReflectMethod method => HasElmEndpoints (Servant.Verb method 20
       [ prefix
         { _method = method
         , _returnType = Just $ Left Servant.NoContent
-        , _functionName = Text.toLower (toS method) : _functionName prefix
+        , _functionName = Text.toLower (Text.decodeUtf8 method) : _functionName prefix
         }
       ]
       where
@@ -509,7 +512,7 @@ instance
     elmEndpoints' prefix =
       elmEndpoints' @api prefix
         { _headers = _headers prefix <>
-          [ ( toS $ symbolVal $ Proxy @symbol
+          [ ( fromString $ symbolVal $ Proxy @symbol
             , makeEncoder @(Servant.RequiredArgument mods Text) @(Servant.RequiredArgument mods a)
             , case Servant.sbool @(Servant.FoldRequired mods) of
                 Servant.STrue ->
@@ -532,7 +535,7 @@ instance
         { _url = (_url prefix)
           { _queryString =
             _queryString (_url prefix) <>
-            [ ( toS $ symbolVal $ Proxy @symbol
+            [ ( fromString $ symbolVal $ Proxy @symbol
               , case Servant.sbool @(Servant.FoldRequired mods) of
                   Servant.STrue ->
                     Required
@@ -552,7 +555,7 @@ instance (KnownSymbol symbol, HasElmEncoder Text a, HasElmEndpoints api)
         { _url = (_url prefix)
           { _queryString =
             _queryString (_url prefix) <>
-            [ ( toS $ symbolVal $ Proxy @symbol
+            [ ( fromString $ symbolVal $ Proxy @symbol
               , List
               , makeEncoder @Text @a
               )
@@ -567,7 +570,7 @@ instance (KnownSymbol symbol, HasElmEndpoints api)
         { _url = (_url prefix)
           { _queryString =
             _queryString (_url prefix) <>
-            [ ( toS $ symbolVal $ Proxy @symbol
+            [ ( fromString $ symbolVal $ Proxy @symbol
               , Flag
               , Encoder "Basics.identity" "Basics.Bool"
               )
@@ -599,7 +602,7 @@ instance (KnownSymbol path, HasElmEndpoints api) => HasElmEndpoints (path :> api
       }
     where
       path =
-        toS $ symbolVal $ Proxy @path
+        fromString $ symbolVal $ Proxy @path
 
 instance HasElmEndpoints api => HasElmEndpoints (Servant.RemoteHost :> api) where
   elmEndpoints' = elmEndpoints' @api
