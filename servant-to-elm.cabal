@@ -4,10 +4,10 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 94c98baaa8085cbb210f614d42a13aa56afa0429cec5fe3b3416607ac8cc971c
+-- hash: 76dda62e30819622cd48fbd148358cdb0b25fddec8951c2cca91efd425813fcb
 
 name:           servant-to-elm
-version:        0.4.0.0
+version:        0.4.1.0
 synopsis:       Automatically generate Elm clients for Servant APIs
 description:    Please see the README on GitHub at <https://github.com/folq/servant-to-elm#readme>
 category:       Servant, API, Elm, Compiler

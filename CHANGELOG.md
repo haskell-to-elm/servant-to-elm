@@ -2,6 +2,10 @@
 
 ## Unreleased changes
 
+## 0.4.1.0
+
+- Update to `elm-syntax-0.3.0.0` and `haskell-to-elm-0.3.0.0`, adding support for parameterised types
+
 ## 0.4.0.0
 
 - Make endpoints that return NoContent (HTTP status code 204) return `()` on the Elm side, and remove instances for the `NoContent` type
