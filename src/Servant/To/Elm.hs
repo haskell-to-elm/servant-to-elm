@@ -179,26 +179,37 @@ elmEndpointDefinition urlBase moduleName endpoint =
       [ case type_ of
         Required ->
           Expression.List
-            [Expression.String (name <> "=") Expression.++ encode (pure $ paramArgName i)]
+            [ Expression.apps "Url.Builder.string"
+              [ Expression.String name, encode (pure $ paramArgName i) ]
+            ]
 
         Optional ->
           Expression.apps
-            "Maybe.Extra.unwrap"
+            "Maybe.withDefault"
             [ Expression.List []
-            , "List.singleton" Expression.<< Expression.App "Basics.++" (Expression.String $ name <> "=")
-            , encode $ pure $ paramArgName i
+            , Expression.apps "Maybe.map"
+              [ "List.singleton" Expression.<<
+                  Expression.App "Url.Builder.string" (Expression.String name)
+              , encode $ pure $ paramArgName i
+              ]
             ]
 
         Flag ->
           Expression.if_
             (pure $ paramArgName i)
-            (Expression.List [Expression.String name])
+            (Expression.List
+             [ Expression.apps "Url.Builder.string"
+               [ Expression.String name
+               , Expression.String "true"
+               ]
+             ]
+            )
             (Expression.List [])
 
         List ->
           Expression.apps
             "List.map"
-            [ Expression.App "Basics.++" (Expression.String (name <> "[]=")) Expression.<< encoder
+            [ Expression.App "Url.Builder.string" (Expression.String name) Expression.<< encoder
             , pure $ paramArgName i
             ]
       | (i, (name, type_, arg)) <- zip [0..] $ _queryString $ _url endpoint
@@ -211,33 +222,11 @@ elmEndpointDefinition urlBase moduleName endpoint =
       ]
 
     elmUrl =
-      case elmParams of
-        [] ->
-          withoutParams
-
-        [elmParams'] ->
-          withParams elmParams'
-
-        _ ->
-          withParams (Expression.App "List.concat" $ Expression.List elmParams)
-
-      where
-        withoutParams =
-          Expression.apps
-            "String.join"
-            [ Expression.String "/"
-            , Expression.List $ vacuous urlBase : fmap elmPathSegment numberedPathSegments
-            ]
-
-        withParams params =
-          withoutParams Expression.++
-            Expression.Case params
-              [ (Pattern.List [], Bound.toScope $ Expression.String "")
-              , ( Pattern.Var 0
-                , Bound.toScope $ Expression.String "?" Expression.++ Expression.apps "String.join" [Expression.String "&", pure $ Bound.B 0]
-                )
-              ]
-
+      Expression.apps
+        "Url.Builder.absolute"
+        [ Expression.List $ vacuous urlBase : fmap elmPathSegment numberedPathSegments
+        , Expression.App "List.concat" $ Expression.List elmParams
+        ]
 
     elmHeaders =
       let
