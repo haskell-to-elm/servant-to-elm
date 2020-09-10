@@ -223,8 +223,9 @@ elmEndpointDefinition urlBase moduleName endpoint =
 
     elmUrl =
       Expression.apps
-        "Url.Builder.absolute"
-        [ Expression.List $ vacuous urlBase : fmap elmPathSegment numberedPathSegments
+        "Url.Builder.crossOrigin"
+        [ vacuous urlBase
+        , Expression.List $  fmap elmPathSegment numberedPathSegments
         , Expression.App "List.concat" $ Expression.List elmParams
         ]
 
