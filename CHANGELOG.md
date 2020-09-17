@@ -2,6 +2,8 @@
 
 ## Unreleased changes
 
+- Use the `Url.Builder` module from `elm/url` to build URLs (https://github.com/folq/servant-to-elm/pull/6 by https://github.com/rl-king)
+
 ## 0.4.1.0
 
 - Update to `elm-syntax-0.3.0.0` and `haskell-to-elm-0.3.0.0`, adding support for parameterised types
