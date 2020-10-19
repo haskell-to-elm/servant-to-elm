@@ -55,7 +55,7 @@ elmEndpointDefinition urlBase moduleName endpoint =
     (error "expression not closed" <$> lambdaArgs argNames elmLambdaBody)
   where
     functionName =
-      case _functionName endpoint of
+      case Text.filter Char.isAlphaNum <$> _functionName endpoint of
         [] ->
           ""
 
