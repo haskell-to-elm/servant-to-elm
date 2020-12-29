@@ -81,6 +81,7 @@ test-suite servant-to-elm-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      TestExampleServer
       Paths_servant_to_elm
   hs-source-dirs:
       test
@@ -89,11 +90,20 @@ test-suite servant-to-elm-test
       aeson >=1.4.0
     , base >=4.7 && <5
     , bound >=2.0.0
+    , bytestring
+    , directory
     , elm-syntax >=0.3.0 && <0.3.1
+    , filepath
+    , generics-sop
     , haskell-to-elm >=0.3.0 && <0.3.1
+    , hspec
     , http-types >=0.12.0
+    , prettyprinter
+    , process
     , servant >=0.16.0
     , servant-multipart >=0.11.0
     , servant-to-elm
+    , temporary
     , text >=1.2.0
+    , unordered-containers
   default-language: Haskell2010

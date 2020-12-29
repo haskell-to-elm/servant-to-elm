@@ -55,7 +55,16 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
+    - bytestring
+    - directory
+    - filepath
+    - generics-sop
+    - hspec
+    - prettyprinter
+    - process
     - servant-to-elm
+    - temporary
+    - unordered-containers
 
 flags:
   examples:
