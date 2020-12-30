@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 9c6cad9237a56dfbf77d810a0164d209a102de8b936f1a71a8bca76f9f169a8f
+-- hash: 55caeba41c29128f9844d134927833eeb87f3d9f653c30b9f523f6b3f12b0503
 
 name:           servant-to-elm
 version:        0.4.1.0
@@ -48,7 +48,7 @@ library
     , elm-syntax >=0.3.0 && <0.3.1
     , haskell-to-elm >=0.3.0 && <0.3.2
     , http-types >=0.12.0
-    , servant >=0.16.0
+    , servant >=0.16.0 && <0.17.0
     , servant-multipart >=0.11.0
     , text >=1.2.0
   default-language: Haskell2010
@@ -100,7 +100,7 @@ test-suite servant-to-elm-test
     , http-types >=0.12.0
     , prettyprinter >=1.2
     , process >=1.6
-    , servant >=0.16.0
+    , servant >=0.16.0 && <0.17.0
     , servant-multipart >=0.11.0
     , servant-to-elm
     , temporary >=1.3
