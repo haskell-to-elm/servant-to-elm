@@ -27,7 +27,7 @@ dependencies:
 - elm-syntax >= 0.3.0 && < 0.3.1
 - haskell-to-elm >= 0.3.0 && < 0.3.2
 - http-types >= 0.12.0
-- servant >= 0.16.0
+- servant >= 0.16.0 && < 0.17.0
 - servant-multipart >= 0.11.0
 - text >= 1.2.0
 
@@ -55,7 +55,16 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
+    - bytestring >= 0.10
+    - directory >= 1.3
+    - filepath >= 1.4
+    - generics-sop >= 0.4
+    - hspec >= 2.7
+    - prettyprinter >= 1.2
+    - process >= 1.6
     - servant-to-elm
+    - temporary >= 1.3
+    - unordered-containers >= 0.2
 
 flags:
   examples:
