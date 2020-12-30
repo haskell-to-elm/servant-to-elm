@@ -47,11 +47,20 @@ type UserAPI
   = "user" :> Get '[JSON] User
   :<|> "user" :> ReqBody '[JSON] User :> PostNoContent '[JSON] NoContent
 
-elmModules :: HashMap [Text] (Pretty.Doc ann)
-elmModules =
+definitionModules :: HashMap [Text] (Pretty.Doc ann)
+definitionModules =
   Pretty.modules (Simplification.simplifyDefinition <$> definitions)
   where
     definitions :: [Elm.Definition]
     definitions =
       map (elmEndpointDefinition "Config.urlBase" ["Api"]) (elmEndpoints @UserAPI)
+        <> jsonDefinitions @User
+
+requestInfoModules :: HashMap [Text] (Pretty.Doc ann)
+requestInfoModules =
+  Pretty.modules (Simplification.simplifyDefinition <$> definitions)
+  where
+    definitions :: [Elm.Definition]
+    definitions =
+      map (elmEndpointRequestInfo ["Api"]) (elmEndpoints @UserAPI)
         <> jsonDefinitions @User
