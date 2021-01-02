@@ -4,6 +4,7 @@ module Main where
 
 import qualified Data.ByteString as BS
 import Data.Foldable
+import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
 import qualified Data.List as List
 import Data.Text (Text)
@@ -16,7 +17,7 @@ import System.IO.Temp
 import System.Process (callCommand)
 import Test.Hspec
 
-import TestExampleServer
+import qualified TestExampleServer
 
 main :: IO ()
 main =
@@ -25,13 +26,17 @@ main =
 spec :: Spec
 spec = do
   describe "servant-to-elm" $ do
-    it "generated-elm-compiles" $ do
+    it "elmEndpointDefinition" $
+      withTempDir (testElmClient TestExampleServer.definitionModules)
+    it "elmEndpointRequestInfo" $
+      withTempDir (testElmClient TestExampleServer.requestInfoModules)
+  where
+    withTempDir =
       withSystemTempDirectory
-        "servant-to-elm" -- directory name template
-        testElmClient
+        "servant-to-elm" -- temp dir name template
 
-testElmClient :: FilePath -> IO ()
-testElmClient tempDir = do
+testElmClient :: HashMap [Text] (Pretty.Doc ann) -> FilePath -> IO ()
+testElmClient elmModules tempDir = do
   let srcDir = tempDir </> "src"
   createDirectory srcDir
   createDirectory (srcDir </> "Api")

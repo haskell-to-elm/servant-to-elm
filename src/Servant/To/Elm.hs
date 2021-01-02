@@ -13,7 +13,20 @@
 {-# language TypeOperators #-}
 {-# language UndecidableInstances #-}
 {-# options_ghc -fno-warn-orphans #-}
-module Servant.To.Elm where
+module Servant.To.Elm
+  ( elmEndpointDefinition
+  , elmEndpointRequestInfo
+  , HasElmEndpoints(..)
+  , elmEndpoints
+  , Endpoint(..)
+  , PathSegment (..)
+  , QueryParamType(..)
+  , URL(..)
+  , Encoder(..)
+  , Decoder(..)
+  , makeEncoder
+  , makeDecoder
+  ) where
 
 import qualified Bound
 import qualified Data.Aeson as Aeson
@@ -42,6 +55,9 @@ import qualified Language.Elm.Type as Type
 import Language.Haskell.To.Elm
 
 -- | Generate an Elm function for making a request to a Servant endpoint.
+--
+-- See 'elmEndpointRequestInfo' if you need more flexibility,
+-- such as setting timeouts.
 elmEndpointDefinition
   :: Expression Void -- ^ The URL base of the endpoint
   -> Name.Module -- ^ The module that the function should be generated into
@@ -49,27 +65,11 @@ elmEndpointDefinition
   -> Definition
 elmEndpointDefinition urlBase moduleName endpoint =
   Definition.Constant
-    (Name.Qualified moduleName functionName)
+    (Name.Qualified moduleName (functionName endpoint))
     0
     (Bound.toScope $ vacuous $ elmTypeSig)
-    (error "expression not closed" <$> lambdaArgs argNames elmLambdaBody)
+    (error "expression not closed" <$> lambdaArgs (argNames endpoint) elmLambdaBody)
   where
-    functionName =
-      case Text.filter Char.isAlphaNum <$> _functionName endpoint of
-        [] ->
-          ""
-
-        firstPart:rest ->
-          firstPart <> foldMap capitalise rest
-
-    capitalise s =
-      case Text.uncons s of
-        Nothing ->
-          ""
-
-        Just (c, s') ->
-          Text.cons (Char.toUpper c) s'
-
     elmTypeSig :: Type Void
     elmTypeSig =
       Type.funs
@@ -78,7 +78,7 @@ elmEndpointDefinition urlBase moduleName endpoint =
             | (_, arg, _) <- _headers endpoint
             ]
           , [ _encodedType arg
-            | Capture _ (_, arg) <- numberedPathSegments
+            | Capture _ (_, arg) <- numberedPathSegments endpoint
             ]
           , [ case type_ of
                 Required ->
@@ -121,254 +121,124 @@ elmEndpointDefinition urlBase moduleName endpoint =
           [Type.tuple "Http.Error" (Type.App "Maybe.Maybe" $ Type.Record [("metadata", "Http.Metadata"), ("body", "String.String")]), type_]
         )
 
-    numberedPathSegments =
-      go 0 $ _path $ _url endpoint
-      where
-        go !i segments =
-          case segments of
-            [] ->
-              []
-
-            Static p:segments' ->
-              Static p : go i segments'
-
-            Capture str arg:segments' ->
-              Capture str (i, arg) : go (i + 1) segments'
-
-    argNames =
-      concat
-      [ [ headerArgName i
-        | (i, _) <- zip [0..] $ _headers endpoint
-        ]
-      , [ capturedArgName i
-        | Capture _ (i, _) <- numberedPathSegments
-        ]
-      , [ paramArgName i
-        | (i, _) <- zip [0..] $ _queryString $ _url endpoint
-        ]
-      , [ bodyArgName
-        | Just _ <- [_body endpoint]
-        ]
-      ]
-
-    lambdaArgs :: [Text] -> Expression Text -> Expression Text
-    lambdaArgs args rhs =
-      case args of
-        [] ->
-          rhs
-
-        arg:args' ->
-          Expression.Lam $ Bound.abstract1 arg $ lambdaArgs args' rhs
-
     elmLambdaBody :: Expression Text
     elmLambdaBody =
       Expression.App
         "Http.request"
         (Expression.Record
           [ ("method", Expression.String $ Text.decodeUtf8 $ _method endpoint)
-          , ("headers", elmHeaders)
+          , ("headers", elmHeaders endpoint)
           , ("url", elmUrl)
-          , ("body", elmBody)
-          , ("expect", elmExpect)
+          , ("body", elmBody endpoint)
+          , ("expect", elmExpect endpoint)
           , ("timeout", "Maybe.Nothing")
           , ("tracker", "Maybe.Nothing")
           ]
         )
 
-    elmParams =
-      [ case type_ of
-        Required ->
-          Expression.List
-            [ Expression.apps "Url.Builder.string"
-              [ Expression.String name, encode (pure $ paramArgName i) ]
-            ]
-
-        Optional ->
-          Expression.apps
-            "Maybe.withDefault"
-            [ Expression.List []
-            , Expression.apps "Maybe.map"
-              [ "List.singleton" Expression.<<
-                  Expression.App "Url.Builder.string" (Expression.String name)
-              , encode $ pure $ paramArgName i
-              ]
-            ]
-
-        Flag ->
-          Expression.if_
-            (pure $ paramArgName i)
-            (Expression.List
-             [ Expression.apps "Url.Builder.string"
-               [ Expression.String name
-               , Expression.String "true"
-               ]
-             ]
-            )
-            (Expression.List [])
-
-        List ->
-          Expression.apps
-            "List.map"
-            [ Expression.App "Url.Builder.string" (Expression.String name) Expression.<< encoder
-            , pure $ paramArgName i
-            ]
-      | (i, (name, type_, arg)) <- zip [0..] $ _queryString $ _url endpoint
-      , let
-          encoder =
-            vacuous $ _encoder arg
-
-          encode =
-            Expression.App encoder
-      ]
-
     elmUrl =
       Expression.apps
         "Url.Builder.crossOrigin"
         [ vacuous urlBase
-        , Expression.List $  fmap elmPathSegment numberedPathSegments
-        , Expression.App "List.concat" $ Expression.List elmParams
+        , Expression.List $ fmap elmPathSegment (numberedPathSegments endpoint)
+        , Expression.App "List.concat" $ Expression.List (elmParams endpoint)
         ]
 
-    elmHeaders =
-      let
-        headerDecoder i name arg  =
-          Expression.apps
-            "Http.header"
-            [ Expression.String name
-            , Expression.App
-              (vacuous $ _encoder arg)
-              (pure $ headerArgName i)
+-- | Generate an Elm function for creating information needed to make an HTTP request.
+-- This gives the user flexibility in how to actually make the request.
+--
+-- For example, they can use the <https://package.elm-lang.org/packages/elm/http/latest/Http#request>
+-- function and provide it with their own @timeout@ and @tracker@ arguments.
+--
+-- It also leaves building the final URL to the Elm user.
+-- This gives them the flexibility to do things like vary the domain used at runtime
+-- based on whether the app's in staging or production.
+-- Note that they must remember to use BOTH @urlPath@ and @urlQueryParams@.
+elmEndpointRequestInfo
+  :: Name.Module -- ^ The module that the function should be generated into
+  -> Endpoint -- ^ A description of the endpoint
+  -> Definition
+elmEndpointRequestInfo moduleName endpoint =
+  Definition.Constant
+    (Name.Qualified moduleName (functionName endpoint))
+    0
+    (Bound.toScope $ vacuous $ elmTypeSig)
+    (error "expression not closed" <$> lambdaArgs (argNames endpoint) elmLambdaBody)
+  where
+    elmTypeSig :: Type Void
+    elmTypeSig =
+      Type.funs
+        (concat
+          [ [ _encodedType arg
+            | (_, arg, _) <- _headers endpoint
             ]
-
-        optionalHeaderDecoder i name arg =
-          Expression.apps
-            "Maybe.map"
-            [ Expression.App
-              "Http.header"
-              (Expression.String name)
-            , Expression.App
-              (vacuous $ _encoder arg)
-              (pure $ headerArgName i)
+          , [ _encodedType arg
+            | Capture _ (_, arg) <- numberedPathSegments endpoint
             ]
-      in
-      case _headers endpoint of
-        [] ->
-          Expression.List []
+          , [ case type_ of
+                Required ->
+                  vacuous $ _encodedType arg
 
-        _
-          | all (\(_, _, required) -> required) (_headers endpoint) ->
-          Expression.List
-            [ headerDecoder i name arg
-            | (i, (name, arg, _)) <- zip [0..] $ _headers endpoint
+                Optional ->
+                  vacuous $ _encodedType arg
+
+                Flag ->
+                  vacuous $ _encodedType arg
+
+                List ->
+                  vacuous $ Type.App "List.List" $ _encodedType arg
+            | (_, type_, arg) <- _queryString $ _url endpoint
             ]
-
-        _ ->
-          Expression.apps "List.filterMap"
-          [ "Basics.identity"
-          , Expression.List
-              [ if required then
-                  Expression.App "Maybe.Just" $ headerDecoder i name arg
-
-                else
-                  optionalHeaderDecoder i name arg
-              | (i, (name, arg, required)) <- zip [0..] $ _headers endpoint
-              ]
+          , [ _encodedType body
+            | Just (_, body) <- [_body endpoint]
+            ]
           ]
+        )
+        elmReturnType
 
+    elmReturnType =
+      let
+        type_ =
+          case _returnType endpoint of
+            Nothing ->
+              "Basics.()"
 
-    elmBody =
-      case _body endpoint of
-        Nothing ->
-          "Http.emptyBody"
+            Just (Left Servant.NoContent) ->
+              "Basics.()"
 
-        Just (bodyType, body) ->
-          Expression.App
-            (vacuous bodyType)
-            (Expression.App (vacuous $ _encoder body) $ pure bodyArgName)
+            Just (Right decoder) ->
+              _decodedType decoder
 
-    elmExpect =
-      Expression.apps
-        "Http.expectStringResponse"
-        [ "Basics.identity"
-        , Expression.Lam $ Bound.toScope $
-            Expression.Case (pure $ Bound.B ())
-            [ ( Pattern.Con "Http.BadUrl_" [Pattern.Var 0]
-              , Bound.toScope $
-                Expression.App "Result.Err" $
-                Expression.tuple (Expression.App "Http.BadUrl" $ pure (Bound.B 0)) "Maybe.Nothing"
-              )
-            , ( Pattern.Con "Http.Timeout_" []
-              , Bound.toScope $
-                Expression.App "Result.Err" $
-                Expression.tuple "Http.Timeout" "Maybe.Nothing"
-              )
-            , ( Pattern.Con "Http.NetworkError_" []
-              , Bound.toScope $
-                Expression.App "Result.Err" $
-                Expression.tuple "Http.NetworkError" "Maybe.Nothing"
-              )
-            , ( Pattern.Con "Http.BadStatus_" [Pattern.Var 0, Pattern.Var 1]
-              , Bound.toScope $
-                Expression.App "Result.Err" $
-                Expression.tuple
-                  (Expression.App "Http.BadStatus" (Expression.App (Expression.Proj "statusCode") $ pure $ Bound.B 0))
-                  (Expression.App "Maybe.Just" $ Expression.Record [("metadata", pure $ Bound.B 0), ("body", pure $ Bound.B 1)])
-              )
-            , ( Pattern.Con "Http.GoodStatus_" [Pattern.Var 0, Pattern.Var 1]
-              , Bound.toScope $
-                case _returnType endpoint of
-                  Nothing ->
-                    error "elmRequest: No return type" -- TODO?
-
-                  Just (Left Servant.NoContent) ->
-                    Expression.if_ (Expression.apps ("Basics.==") [pure $ Bound.B 1, Expression.String ""])
-                      (Expression.App "Result.Ok" "Basics.()")
-                      (Expression.App "Result.Err" $
-                        Expression.tuple
-                          (Expression.App "Http.BadBody" $ Expression.String "Expected the response body to be empty")
-                          (Expression.App "Maybe.Just" $ Expression.Record [("metadata", pure $ Bound.B 0), ("body", pure $ Bound.B 1)])
-                      )
-
-                  Just (Right elmReturnDecoder) ->
-                    Expression.apps "Result.mapError"
-                      [ Expression.Lam $ Bound.toScope $
-                        Expression.tuple
-                          (Expression.App "Http.BadBody" $
-                            Expression.App "Json.Decode.errorToString" $
-                            pure $ Bound.B ()
-                          )
-                          (Expression.App "Maybe.Just" $ Expression.Record [("metadata", pure $ Bound.F $ Bound.B 0), ("body", pure $ Bound.F $ Bound.B 1)])
-                      , Expression.apps "Json.Decode.decodeString" [vacuous $ _decoder elmReturnDecoder, pure $ Bound.B 1]
-                      ]
-              )
-            ]
+        expectType =
+          Type.App
+            "Http.Expect"
+            (Type.apps
+              "Result.Result"
+              [ Type.tuple
+                  "Http.Error"
+                  (Type.App "Maybe.Maybe" $ Type.Record [("metadata", "Http.Metadata"), ("body", "String.String")])
+              , type_
+              ])
+      in
+      Type.Record
+        [ ("method", "String.String")
+        , ("headers", Type.App "List.List" "Http.Header")
+        , ("urlPath", Type.App "List.List" "String.String")
+        , ("urlQueryParams", Type.App "List.List" "Url.Builder.QueryParameter")
+        , ("body", "Http.Body")
+        , ("expect", expectType)
         ]
 
-    elmPathSegment pathSegment =
-      case pathSegment of
-        Static s ->
-          Expression.String s
-
-        Capture _ (i, arg) ->
-          Expression.App
-            (vacuous $ _encoder arg)
-            (pure $ capturedArgName i)
-
-    bodyArgName :: Text
-    bodyArgName =
-      "body"
-
-    headerArgName :: Int -> Text
-    headerArgName i =
-      "header" <> fromString (show i)
-
-    capturedArgName :: Int -> Text
-    capturedArgName i =
-      "capture" <> fromString (show i)
-
-    paramArgName :: Int -> Text
-    paramArgName i =
-      "param" <> fromString (show i)
+    elmLambdaBody :: Expression Text
+    elmLambdaBody =
+      Expression.Record
+        [ ("method", Expression.String $ Text.decodeUtf8 $ _method endpoint)
+        , ("headers", elmHeaders endpoint)
+        , ("urlPath", Expression.List (fmap elmPathSegment (numberedPathSegments endpoint)))
+        , ("urlQueryParams", Expression.List (elmParams endpoint))
+        , ("body", elmBody endpoint)
+        , ("expect", elmExpect endpoint)
+        ]
 
 -------------------------------------------------------------------------------
 -- * Endpoints
@@ -625,3 +495,255 @@ instance HasElmType (Servant.MultipartData tag) where
 instance HasElmEncoder (Servant.MultipartData tag) (Servant.MultipartData tag) where
   elmEncoder =
     "Basics.identity"
+
+-------------------------------------------------------------------------------
+-- * Internal
+
+elmHeaders :: Endpoint -> Expression Text
+elmHeaders endpoint =
+  let
+    headerDecoder i name arg  =
+      Expression.apps
+        "Http.header"
+        [ Expression.String name
+        , Expression.App
+          (vacuous $ _encoder arg)
+          (pure $ headerArgName i)
+        ]
+
+    optionalHeaderDecoder i name arg =
+      Expression.apps
+        "Maybe.map"
+        [ Expression.App
+          "Http.header"
+          (Expression.String name)
+        , Expression.App
+          (vacuous $ _encoder arg)
+          (pure $ headerArgName i)
+        ]
+  in
+  case _headers endpoint of
+    [] ->
+      Expression.List []
+
+    _
+      | all (\(_, _, required) -> required) (_headers endpoint) ->
+      Expression.List
+        [ headerDecoder i name arg
+        | (i, (name, arg, _)) <- zip [0..] $ _headers endpoint
+        ]
+
+    _ ->
+      Expression.apps "List.filterMap"
+      [ "Basics.identity"
+      , Expression.List
+          [ if required then
+              Expression.App "Maybe.Just" $ headerDecoder i name arg
+
+            else
+              optionalHeaderDecoder i name arg
+          | (i, (name, arg, required)) <- zip [0..] $ _headers endpoint
+          ]
+      ]
+
+headerArgName :: Int -> Text
+headerArgName i =
+  "header" <> fromString (show i)
+
+numberedPathSegments :: Endpoint -> [PathSegment (Int, Encoder)]
+numberedPathSegments endpoint =
+  go 0 $ _path $ _url endpoint
+  where
+    go !i segments =
+      case segments of
+        [] ->
+          []
+
+        Static p:segments' ->
+          Static p : go i segments'
+
+        Capture str arg:segments' ->
+          Capture str (i, arg) : go (i + 1) segments'
+
+elmParams :: Endpoint -> [Expression Text]
+elmParams endpoint =
+  [ case type_ of
+    Required ->
+      Expression.List
+        [ Expression.apps "Url.Builder.string"
+          [ Expression.String name, encode (pure $ paramArgName i) ]
+        ]
+
+    Optional ->
+      Expression.apps
+        "Maybe.withDefault"
+        [ Expression.List []
+        , Expression.apps "Maybe.map"
+          [ "List.singleton" Expression.<<
+              Expression.App "Url.Builder.string" (Expression.String name)
+          , encode $ pure $ paramArgName i
+          ]
+        ]
+
+    Flag ->
+      Expression.if_
+        (pure $ paramArgName i)
+        (Expression.List
+         [ Expression.apps "Url.Builder.string"
+           [ Expression.String name
+           , Expression.String "true"
+           ]
+         ]
+        )
+        (Expression.List [])
+
+    List ->
+      Expression.apps
+        "List.map"
+        [ Expression.App "Url.Builder.string" (Expression.String name) Expression.<< encoder
+        , pure $ paramArgName i
+        ]
+  | (i, (name, type_, arg)) <- zip [0..] $ _queryString $ _url endpoint
+  , let
+      encoder =
+        vacuous $ _encoder arg
+
+      encode =
+        Expression.App encoder
+  ]
+
+paramArgName :: Int -> Text
+paramArgName i =
+  "param" <> fromString (show i)
+
+elmPathSegment :: PathSegment (Int, Encoder) -> Expression Text
+elmPathSegment pathSegment =
+  case pathSegment of
+    Static s ->
+      Expression.String s
+
+    Capture _ (i, arg) ->
+      Expression.App
+        (vacuous $ _encoder arg)
+        (pure $ capturedArgName i)
+
+capturedArgName :: Int -> Text
+capturedArgName i =
+  "capture" <> fromString (show i)
+
+elmBody :: Endpoint -> Expression Text
+elmBody endpoint =
+  case _body endpoint of
+    Nothing ->
+      "Http.emptyBody"
+
+    Just (bodyType, body) ->
+      Expression.App
+        (vacuous bodyType)
+        (Expression.App (vacuous $ _encoder body) $ pure bodyArgName)
+
+elmExpect :: Endpoint -> Expression a
+elmExpect endpoint =
+  Expression.apps
+    "Http.expectStringResponse"
+    [ "Basics.identity"
+    , Expression.Lam $ Bound.toScope $
+        Expression.Case (pure $ Bound.B ())
+        [ ( Pattern.Con "Http.BadUrl_" [Pattern.Var 0]
+          , Bound.toScope $
+            Expression.App "Result.Err" $
+            Expression.tuple (Expression.App "Http.BadUrl" $ pure (Bound.B 0)) "Maybe.Nothing"
+          )
+        , ( Pattern.Con "Http.Timeout_" []
+          , Bound.toScope $
+            Expression.App "Result.Err" $
+            Expression.tuple "Http.Timeout" "Maybe.Nothing"
+          )
+        , ( Pattern.Con "Http.NetworkError_" []
+          , Bound.toScope $
+            Expression.App "Result.Err" $
+            Expression.tuple "Http.NetworkError" "Maybe.Nothing"
+          )
+        , ( Pattern.Con "Http.BadStatus_" [Pattern.Var 0, Pattern.Var 1]
+          , Bound.toScope $
+            Expression.App "Result.Err" $
+            Expression.tuple
+              (Expression.App "Http.BadStatus" (Expression.App (Expression.Proj "statusCode") $ pure $ Bound.B 0))
+              (Expression.App "Maybe.Just" $ Expression.Record [("metadata", pure $ Bound.B 0), ("body", pure $ Bound.B 1)])
+          )
+        , ( Pattern.Con "Http.GoodStatus_" [Pattern.Var 0, Pattern.Var 1]
+          , Bound.toScope $
+            case _returnType endpoint of
+              Nothing ->
+                error "elmRequest: No return type" -- TODO?
+
+              Just (Left Servant.NoContent) ->
+                Expression.if_ (Expression.apps ("Basics.==") [pure $ Bound.B 1, Expression.String ""])
+                  (Expression.App "Result.Ok" "Basics.()")
+                  (Expression.App "Result.Err" $
+                    Expression.tuple
+                      (Expression.App "Http.BadBody" $ Expression.String "Expected the response body to be empty")
+                      (Expression.App "Maybe.Just" $ Expression.Record [("metadata", pure $ Bound.B 0), ("body", pure $ Bound.B 1)])
+                  )
+
+              Just (Right elmReturnDecoder) ->
+                Expression.apps "Result.mapError"
+                  [ Expression.Lam $ Bound.toScope $
+                    Expression.tuple
+                      (Expression.App "Http.BadBody" $
+                        Expression.App "Json.Decode.errorToString" $
+                        pure $ Bound.B ()
+                      )
+                      (Expression.App "Maybe.Just" $ Expression.Record [("metadata", pure $ Bound.F $ Bound.B 0), ("body", pure $ Bound.F $ Bound.B 1)])
+                  , Expression.apps "Json.Decode.decodeString" [vacuous $ _decoder elmReturnDecoder, pure $ Bound.B 1]
+                  ]
+          )
+        ]
+    ]
+
+bodyArgName :: Text
+bodyArgName =
+  "body"
+
+lambdaArgs :: [Text] -> Expression Text -> Expression Text
+lambdaArgs args rhs =
+  case args of
+    [] ->
+      rhs
+
+    arg:args' ->
+      Expression.Lam $ Bound.abstract1 arg $ lambdaArgs args' rhs
+
+argNames :: Endpoint -> [Text]
+argNames endpoint =
+  concat
+  [ [ headerArgName i
+    | (i, _) <- zip [0..] $ _headers endpoint
+    ]
+  , [ capturedArgName i
+    | Capture _ (i, _) <- numberedPathSegments endpoint
+    ]
+  , [ paramArgName i
+    | (i, _) <- zip [0..] $ _queryString $ _url endpoint
+    ]
+  , [ bodyArgName
+    | Just _ <- [_body endpoint]
+    ]
+  ]
+
+functionName :: Endpoint -> Text
+functionName endpoint =
+  case Text.filter Char.isAlphaNum <$> _functionName endpoint of
+    [] ->
+      ""
+
+    firstPart:rest ->
+      firstPart <> foldMap capitalise rest
+  where
+    capitalise s =
+      case Text.uncons s of
+        Nothing ->
+          ""
+
+        Just (c, s') ->
+          Text.cons (Char.toUpper c) s'
