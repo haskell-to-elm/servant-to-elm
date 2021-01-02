@@ -13,7 +13,20 @@
 {-# language TypeOperators #-}
 {-# language UndecidableInstances #-}
 {-# options_ghc -fno-warn-orphans #-}
-module Servant.To.Elm where
+module Servant.To.Elm
+  ( elmEndpointDefinition
+  , elmEndpointRequestInfo
+  , HasElmEndpoints(..)
+  , elmEndpoints
+  , Endpoint(..)
+  , PathSegment (..)
+  , QueryParamType(..)
+  , URL(..)
+  , Encoder(..)
+  , Decoder(..)
+  , makeEncoder
+  , makeDecoder
+  ) where
 
 import qualified Bound
 import qualified Data.Aeson as Aeson
