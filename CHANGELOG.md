@@ -2,7 +2,10 @@
 
 ## Unreleased changes
 
+## 0.4.2.0
+
 - Use the `Url.Builder` module from `elm/url` to build URLs (https://github.com/folq/servant-to-elm/pull/6 by https://github.com/rl-king)
+- Update `haskell-to-elm` bounds to latest version 0.3.2
 
 ## 0.4.1.0
 

@@ -1,13 +1,13 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.34.3.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 55caeba41c29128f9844d134927833eeb87f3d9f653c30b9f523f6b3f12b0503
+-- hash: 600be4c131caa5290786ee59b7f6bb34535ebd50ff0b013c8529535fae575747
 
 name:           servant-to-elm
-version:        0.4.1.0
+version:        0.4.2.0
 synopsis:       Automatically generate Elm clients for Servant APIs
 description:    Please see the README on GitHub at <https://github.com/folq/servant-to-elm#readme>
 category:       Servant, API, Elm, Compiler
@@ -18,7 +18,8 @@ maintainer:     fredriksson.olle@gmail.com
 copyright:      2019 Olle Fredriksson
 license:        BSD3
 license-file:   LICENSE
-tested-with:    GHC == 8.4.3, GHC == 8.6.5, GHC == 8.8.3
+tested-with:
+    GHC == 8.4.3, GHC == 8.6.5, GHC == 8.8.3
 build-type:     Simple
 extra-source-files:
     README.md
@@ -46,7 +47,7 @@ library
     , base >=4.7 && <5
     , bound >=2.0.0
     , elm-syntax >=0.3.0 && <0.3.1
-    , haskell-to-elm >=0.3.0 && <0.3.2
+    , haskell-to-elm >=0.3.0 && <0.3.3
     , http-types >=0.12.0
     , servant >=0.16.0 && <0.17.0
     , servant-multipart >=0.11.0
@@ -66,7 +67,7 @@ executable user-example
     , bound >=2.0.0
     , elm-syntax >=0.3.0 && <0.3.1
     , generics-sop
-    , haskell-to-elm >=0.3.0 && <0.3.2
+    , haskell-to-elm >=0.3.0 && <0.3.3
     , http-types >=0.12.0
     , servant
     , servant-multipart >=0.11.0
@@ -95,7 +96,7 @@ test-suite servant-to-elm-test
     , elm-syntax >=0.3.0 && <0.3.1
     , filepath >=1.4
     , generics-sop >=0.4
-    , haskell-to-elm >=0.3.0 && <0.3.2
+    , haskell-to-elm >=0.3.0 && <0.3.3
     , hspec >=2.7
     , http-types >=0.12.0
     , prettyprinter >=1.2
