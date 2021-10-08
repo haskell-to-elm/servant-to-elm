@@ -5,7 +5,7 @@
 {-# language OverloadedStrings #-}
 {-# language TypeApplications #-}
 {-# language TypeOperators #-}
-module UserAPI where
+module Main where
 
 import qualified Data.Aeson as Aeson
 import Data.Foldable
@@ -39,7 +39,7 @@ instance HasElmEncoder Aeson.Value User where
 
 type UserAPI
   = "user" :> Get '[JSON] User
-  :<|> "user" :> ReqBody '[JSON] User :> PostNoContent '[JSON] NoContent
+  :<|> "user" :> ReqBody '[JSON] User :> PostNoContent
 
 main :: IO ()
 main = do

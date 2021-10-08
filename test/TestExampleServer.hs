@@ -15,12 +15,12 @@ module TestExampleServer where
 import qualified Data.Aeson as Aeson
 import Data.HashMap.Strict (HashMap)
 import Data.Text (Text)
-import qualified Data.Text.Prettyprint.Doc as Pretty
 import GHC.Generics
 import qualified Generics.SOP as SOP
 import qualified Language.Elm.Definition as Elm (Definition)
 import qualified Language.Elm.Pretty as Pretty
 import qualified Language.Elm.Simplification as Simplification
+import qualified Prettyprinter
 import Servant.API
 import Servant.To.Elm
 
@@ -45,9 +45,9 @@ instance HasElmEncoder Aeson.Value User where
 
 type UserAPI
   = "user" :> Get '[JSON] User
-  :<|> "user" :> ReqBody '[JSON] User :> PostNoContent '[JSON] NoContent
+  :<|> "user" :> ReqBody '[JSON] User :> PostNoContent
 
-definitionModules :: HashMap [Text] (Pretty.Doc ann)
+definitionModules :: HashMap [Text] (Prettyprinter.Doc ann)
 definitionModules =
   Pretty.modules (Simplification.simplifyDefinition <$> definitions)
   where
@@ -56,7 +56,7 @@ definitionModules =
       map (elmEndpointDefinition "Config.urlBase" ["Api"]) (elmEndpoints @UserAPI)
         <> jsonDefinitions @User
 
-requestInfoModules :: HashMap [Text] (Pretty.Doc ann)
+requestInfoModules :: HashMap [Text] (Prettyprinter.Doc ann)
 requestInfoModules =
   Pretty.modules (Simplification.simplifyDefinition <$> definitions)
   where

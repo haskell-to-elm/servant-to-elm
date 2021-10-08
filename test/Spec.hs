@@ -10,7 +10,7 @@ import qualified Data.List as List
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Text.Encoding (encodeUtf8)
-import qualified Data.Text.Prettyprint.Doc as Pretty
+import qualified Prettyprinter
 import System.Directory
 import System.FilePath
 import System.IO.Temp
@@ -35,7 +35,7 @@ spec = do
       withSystemTempDirectory
         "servant-to-elm" -- temp dir name template
 
-testElmClient :: HashMap [Text] (Pretty.Doc ann) -> FilePath -> IO ()
+testElmClient :: HashMap [Text] (Prettyprinter.Doc ann) -> FilePath -> IO ()
 testElmClient elmModules tempDir = do
   let srcDir = tempDir </> "src"
   createDirectory srcDir
@@ -55,7 +55,7 @@ testElmClient elmModules tempDir = do
       withCurrentDirectory tempDir $
         callCommand "elm make src/**.elm"
 
-writeElmModule :: FilePath -> [Text] -> Pretty.Doc ann -> IO ()
+writeElmModule :: FilePath -> [Text] -> Prettyprinter.Doc ann -> IO ()
 writeElmModule srcDir moduleName content =
   BS.writeFile
     path
