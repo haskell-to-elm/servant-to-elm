@@ -1,5 +1,5 @@
 name:                servant-to-elm
-version:             0.4.2.0
+version:             0.4.3.0
 github:              "folq/servant-to-elm"
 license:             BSD3
 author:              "Olle Fredriksson"
@@ -27,7 +27,7 @@ dependencies:
 - elm-syntax >= 0.3.0 && < 0.3.1
 - haskell-to-elm >= 0.3.0 && < 0.3.3
 - http-types >= 0.12.0
-- servant >= 0.16.0 && < 0.17.0
+- servant >= 0.17 && < 0.19
 - servant-multipart >= 0.11.0
 - text >= 1.2.0
 

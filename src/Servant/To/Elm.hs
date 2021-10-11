@@ -363,6 +363,18 @@ instance Servant.ReflectMethod method => HasElmEndpoints (Servant.Verb method 20
         method =
           Servant.reflectMethod $ Proxy @method
 
+instance Servant.ReflectMethod method => HasElmEndpoints (Servant.NoContentVerb method) where
+  elmEndpoints' prefix =
+      [ prefix
+        { _method = method
+        , _returnType = Just $ Left Servant.NoContent
+        , _functionName = Text.toLower (Text.decodeUtf8 method) : _functionName prefix
+        }
+      ]
+      where
+        method =
+          Servant.reflectMethod $ Proxy @method
+
 instance
   ( Servant.SBoolI (Servant.FoldRequired mods)
   , KnownSymbol symbol

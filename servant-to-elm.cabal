@@ -1,13 +1,13 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.3.
+-- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 600be4c131caa5290786ee59b7f6bb34535ebd50ff0b013c8529535fae575747
+-- hash: e2f48584ccf073f959dff499b5f01ecd10c1249e7a292fb998ff01adbc99baaf
 
 name:           servant-to-elm
-version:        0.4.2.0
+version:        0.4.3.0
 synopsis:       Automatically generate Elm clients for Servant APIs
 description:    Please see the README on GitHub at <https://github.com/folq/servant-to-elm#readme>
 category:       Servant, API, Elm, Compiler
@@ -46,10 +46,10 @@ library
       aeson >=1.4.0
     , base >=4.7 && <5
     , bound >=2.0.0
-    , elm-syntax >=0.3.0 && <0.3.1
+    , elm-syntax ==0.3.0.*
     , haskell-to-elm >=0.3.0 && <0.3.3
     , http-types >=0.12.0
-    , servant >=0.16.0 && <0.17.0
+    , servant >=0.17 && <0.19
     , servant-multipart >=0.11.0
     , text >=1.2.0
   default-language: Haskell2010
@@ -65,7 +65,7 @@ executable user-example
       aeson >=1.4.0
     , base >=4.7 && <5
     , bound >=2.0.0
-    , elm-syntax >=0.3.0 && <0.3.1
+    , elm-syntax ==0.3.0.*
     , generics-sop
     , haskell-to-elm >=0.3.0 && <0.3.3
     , http-types >=0.12.0
@@ -93,7 +93,7 @@ test-suite servant-to-elm-test
     , bound >=2.0.0
     , bytestring >=0.10
     , directory >=1.3
-    , elm-syntax >=0.3.0 && <0.3.1
+    , elm-syntax ==0.3.0.*
     , filepath >=1.4
     , generics-sop >=0.4
     , haskell-to-elm >=0.3.0 && <0.3.3
@@ -101,7 +101,7 @@ test-suite servant-to-elm-test
     , http-types >=0.12.0
     , prettyprinter >=1.2
     , process >=1.6
-    , servant >=0.16.0 && <0.17.0
+    , servant >=0.17 && <0.19
     , servant-multipart >=0.11.0
     , servant-to-elm
     , temporary >=1.3
