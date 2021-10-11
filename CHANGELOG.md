@@ -2,6 +2,10 @@
 
 ## Unreleased changes
 
+## 0.4.3.0
+
+- Add `HasElmEndpoints` instance for the new `Servant.NoContentVerb` type. Requires `servant` 0.17 or later.
+
 ## 0.4.2.0
 
 - Use the `Url.Builder` module from `elm/url` to build URLs (https://github.com/folq/servant-to-elm/pull/6 by https://github.com/rl-king)
