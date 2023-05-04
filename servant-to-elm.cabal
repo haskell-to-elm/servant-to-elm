@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.4.
+-- This file has been generated from package.yaml by hpack version 0.35.1.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: e2f48584ccf073f959dff499b5f01ecd10c1249e7a292fb998ff01adbc99baaf
+-- hash: f60e77c4f3a76947e06140f28469d471395a25ea7c73e07a204ec041006ff7ca
 
 name:           servant-to-elm
 version:        0.4.3.0
@@ -19,7 +19,7 @@ copyright:      2019 Olle Fredriksson
 license:        BSD3
 license-file:   LICENSE
 tested-with:
-    GHC == 8.4.3, GHC == 8.6.5, GHC == 8.8.3
+    GHC == 8.4.3, GHC == 8.6.5, GHC == 8.8.3, GHC == 9.2.5
 build-type:     Simple
 extra-source-files:
     README.md
