@@ -1,6 +1,8 @@
-resolver: lts-18.13
+resolver: lts-20.19
 packages:
 - .
 extra-deps:
-- elm-syntax-0.3.0.0
-- haskell-to-elm-0.3.0.0
+- github: folq/elm-syntax
+  commit: 2bc46c09139b9d890721cc33a961ab96c9b46684
+- github: folq/haskell-to-elm
+  commit: 3ba844273cd94c1b90b06eb645137df8a6dcfa42
