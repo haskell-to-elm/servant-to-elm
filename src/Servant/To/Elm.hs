@@ -124,7 +124,7 @@ elmEndpointDefinition urlBase moduleName endpoint =
     elmLambdaBody :: Expression Text
     elmLambdaBody =
       Expression.App
-        "Http.request"
+        "Http.riskyRequest"
         (Expression.Record
           [ ("method", Expression.String $ Text.decodeUtf8 $ _method endpoint)
           , ("headers", elmHeaders endpoint)
